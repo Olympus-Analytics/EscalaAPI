@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.gis.db import models as geo_models
-from django.contrib.gis import geos
 
 # TABLES
 

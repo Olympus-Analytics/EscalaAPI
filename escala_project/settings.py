@@ -118,8 +118,8 @@ USE_I18N = True
 
 USE_TZ = True
 
-GDAL_LIBRARY_PATH = r'C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala\escala-venv\Lib\site-packages\osgeo\gdal.dll'
-GEOS_LIBRARY_PATH = r'C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala\escala-venv\Lib\site-packages\osgeo\geos_c.dll'
+# GDAL_LIBRARY_PATH = r'C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala\escala-venv\Lib\site-packages\osgeo\gdal.dll'
+# GEOS_LIBRARY_PATH = r'C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala\escala-venv\Lib\site-packages\osgeo\geos_c.dll'
 
 
 # Static files (CSS, JavaScript, Images)

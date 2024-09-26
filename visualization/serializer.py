@@ -1,4 +1,4 @@
-from .models import Homicides, TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, LandSurfaceTemperature, NDVI, Rainfall, AirTemperature, AirTempWS, RainfallWS, RelHumidityWS, WeatherStation
+from .models import Homicides, TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, LandSurfaceTemperature, NDVI, Rainfall, AirTemperature
 
 from rest_framework import serializers
             
