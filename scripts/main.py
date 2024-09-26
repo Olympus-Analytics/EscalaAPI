@@ -4,7 +4,7 @@ import pandas as pd
 import sys, os
 sys.path.insert(0, r"C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala")
 
-from visualization.models import Homicides, TrafficCollision, Locality_bar, Neightborhood, Municipality, UrbanPerimeter, TreePlot, LandSurfaceTemperature, NDVI
+from visualization.models import Homicides, TrafficCollision, Locality_bar, Neightborhood, Municipality, UrbanPerimeter, TreePlot, NDVI
 from shapely.geometry.multipolygon import MultiPolygon
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.gdal.raster.source import GDALRaster
