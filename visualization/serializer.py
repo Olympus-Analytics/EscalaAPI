@@ -32,7 +32,7 @@ class TrafficCollisionSerializer (serializers.ModelSerializer):
 class TrafficCollisionDateSerializer (serializers.ModelSerializer):    
     class Meta:
         model = TrafficCollision
-        fields = ['COLID', 'COLYEAR', 'COLMONTH', 'COLDAY', 'COLHOUR', 'chart']
+        fields = ['COLID', 'COLYEAR', 'COLMONTH', 'COLDAY', 'COLHOUR']
         
 class TrafficCollisionVictimsNumberSerializer (serializers.ModelSerializer):    
     class Meta:
