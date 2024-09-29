@@ -185,7 +185,7 @@ class TrafficCollisionObjectViewSet (viewsets.ModelViewSet):
             'labels': labels, 
             'datasets': dataset, 
             'description': 'Object struck during the road traffic collision',
-            'chart': ['doughtnut']
+            'chart': ['doughnut']
             }
         
         return Response(response)
@@ -205,7 +205,7 @@ class TrafficCollisionObjectTypeViewSet (viewsets.ModelViewSet):
             'labels': labels, 
             'datasets': dataset, 
             'description': 'Type of object struck during the road traffic collision',
-            'chart': ['doughtnut']
+            'chart': ['doughnut']
             }
         
         return Response(response)
@@ -269,7 +269,7 @@ class TrafficCollisionRoadViewSet (viewsets.ModelViewSet):
             'labels': labels, 
             'datasets': dataset, 
             'description': 'Type of road traffic collision',
-            'chart': ['doughtnut']
+            'chart': ['doughnut']
             }
         
         return Response(response)
