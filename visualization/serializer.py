@@ -1,6 +1,7 @@
 from .models import Homicides, TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, LandSurfaceTemperature, NDVI, Rainfall, AirTemperature
 
 from rest_framework import serializers
+from rest_framework_gis.serializers import GeoFeatureModelSerializer
             
 # Colecciones de datos de [Homicides]     
 class HomicidesSerializer (serializers.ModelSerializer):
@@ -21,7 +22,7 @@ class HomicidesDateSerializer (serializers.ModelSerializer):
                   'HOMMIN', 'ID_NEIGHB']
 
 # Colecciones de datos de [TrafficCollision]
-class TrafficCollisionSerializer (serializers.ModelSerializer):
+class TrafficCollisionSerializer (GeoFeatureModelSerializer):
     
     class Meta:
         model = TrafficCollision
@@ -39,7 +40,7 @@ class TrafficCollisionVictimsNumberSerializer (serializers.ModelSerializer):
         model = TrafficCollision
         fields = ['COLID', 'COLYEAR', 'COLMONTH', 'COLVICNUM']
         
-class TrafficCollisionPlaceSerializer (serializers.ModelSerializer):   
+class TrafficCollisionPlaceSerializer (GeoFeatureModelSerializer):   
     class Meta:
         model = TrafficCollision
         fields = ['COLID', 'COLZONE', 'COLAREA', 'POINT']
@@ -61,7 +62,7 @@ class TrafficCollisionObjectSerializer (serializers.ModelSerializer):
         fields = ['COLID', 'COLOBJ', 'COLOBJTYP']
 
 # Colecciones de datos de [Neightborhood]
-class NeightborhoodSerializer (serializers.ModelSerializer):
+class NeightborhoodSerializer (GeoFeatureModelSerializer):
     chart = 'map'
     
     class Meta:
@@ -69,7 +70,7 @@ class NeightborhoodSerializer (serializers.ModelSerializer):
         fields = ['ID_NEIGHB', 'NAME', 'POLY', 'LOCALITY']
 
 # Colecciones de datos de [Locality_bar]
-class Locality_barSerializer (serializers.ModelSerializer):
+class Locality_barSerializer (GeoFeatureModelSerializer):
     chart = 'map'
     
     class Meta:
@@ -77,7 +78,7 @@ class Locality_barSerializer (serializers.ModelSerializer):
         fields = ['ID_LOCALITY', 'NAME', 'POLY']
 
 # Colecciones de datos de [UPZ]
-class UPZSerializer (serializers.ModelSerializer):
+class UPZSerializer (GeoFeatureModelSerializer):
     chart = 'map'
     
     class Meta:
@@ -85,7 +86,7 @@ class UPZSerializer (serializers.ModelSerializer):
         fields = ['ID_UPZ', 'NAME', 'POLY']
 
 # Colecciones de datos de [ZAT]
-class ZATSerializer (serializers.ModelSerializer):
+class ZATSerializer (GeoFeatureModelSerializer):
     chart = 'map'
     
     class Meta:
@@ -93,7 +94,7 @@ class ZATSerializer (serializers.ModelSerializer):
         fields = ['ID_ZAT', 'POLY']
 
 # Colecciones de datos de [UrbanPerimeter]
-class UrbanPerimeterSerializer (serializers.ModelSerializer):
+class UrbanPerimeterSerializer (GeoFeatureModelSerializer):
     chart = 'map'
     
     class Meta:
@@ -101,7 +102,7 @@ class UrbanPerimeterSerializer (serializers.ModelSerializer):
         fields = ['ID_URBPER', 'NAME', 'POLY']
 
 # Colecciones de datos de [Municipality]
-class MunicipalitySerializer (serializers.ModelSerializer):
+class MunicipalitySerializer (GeoFeatureModelSerializer):
     chart = 'map'
     
     class Meta:
@@ -116,14 +117,14 @@ class MunicipalityNameSerializer (serializers.ModelSerializer):
         fields = ['ID_MUN', 'NAME']
         
 # Colecciones de datos de [TreePlot]
-class TreePlotSerializer (serializers.ModelSerializer):
+class TreePlotSerializer (GeoFeatureModelSerializer):
     
     class Meta:
         model = TreePlot
         fields = ['IDPLOT', 'TPAREA', 'TPABUND', 'TPSP', 'TPDBH', 'TPHEIG',
                   'TPBAS', 'TPCAREA', 'TPCAPLOT', 'TPCCV', 'POINT']
 
-class TreePlotPointSerializer (serializers.ModelSerializer):
+class TreePlotPointSerializer (GeoFeatureModelSerializer):
     chart = ['map']
     
     class Meta:
@@ -196,6 +197,7 @@ class LandSurfaceTemperatureSerializer (serializers.ModelSerializer):
         model = LandSurfaceTemperature
         fields = ['YEAR', 'MONTH', 'DAY', 'LANDSAT', 'RASTER']
 
+
 # Colecciones de datos de [NDVI]
 class NDVISerializer (serializers.ModelSerializer):
     chart = ['raster']
@@ -203,7 +205,6 @@ class NDVISerializer (serializers.ModelSerializer):
     class Meta:
         model = NDVI
         fields = ['YEAR', 'MONTH', 'DAY', 'LANDSAT', 'RASTER']
-        
         
         
 '''

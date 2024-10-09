@@ -9,3 +9,4 @@ sqlparse==0.5.1
 gunicorn==20.1.0
 whitenoise==6.4.0
 django-cors-headers==4.0.0
+djangorestframework-gis==1.1
