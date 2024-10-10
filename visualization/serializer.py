@@ -66,7 +66,6 @@ class TrafficCollisionObjectSerializer (serializers.ModelSerializer):
 
 # Colecciones de datos de [Neightborhood]
 class NeightborhoodSerializer (GeoFeatureModelSerializer):
-    chart = 'map'
     
     class Meta:
         model = Neightborhood
@@ -75,7 +74,6 @@ class NeightborhoodSerializer (GeoFeatureModelSerializer):
 
 # Colecciones de datos de [Locality_bar]
 class Locality_barSerializer (GeoFeatureModelSerializer):
-    chart = 'map'
     
     class Meta:
         model = Locality_bar
@@ -84,7 +82,6 @@ class Locality_barSerializer (GeoFeatureModelSerializer):
 
 # Colecciones de datos de [UPZ]
 class UPZSerializer (GeoFeatureModelSerializer):
-    chart = 'map'
     
     class Meta:
         model = UPZ
@@ -102,7 +99,6 @@ class ZATSerializer (GeoFeatureModelSerializer):
 
 # Colecciones de datos de [UrbanPerimeter]
 class UrbanPerimeterSerializer (GeoFeatureModelSerializer):
-    chart = 'map'
     
     class Meta:
         model = UrbanPerimeter
@@ -111,7 +107,6 @@ class UrbanPerimeterSerializer (GeoFeatureModelSerializer):
 
 # Colecciones de datos de [Municipality]
 class MunicipalitySerializer (GeoFeatureModelSerializer):
-    chart = 'map'
     
     class Meta:
         model = Municipality
@@ -119,7 +114,6 @@ class MunicipalitySerializer (GeoFeatureModelSerializer):
         fields = ['ID_MUN', 'NAME', 'POLY']
         
 class MunicipalityNameSerializer (serializers.ModelSerializer):
-    chart = 'map'
     
     class Meta:
         model = Municipality
@@ -135,7 +129,6 @@ class TreePlotSerializer (GeoFeatureModelSerializer):
                   'TPBAS', 'TPCAREA', 'TPCAPLOT', 'TPCCV', 'POINT']
 
 class TreePlotPointSerializer (GeoFeatureModelSerializer):
-    chart = ['map']
     
     class Meta:
         model = TreePlot
@@ -143,42 +136,36 @@ class TreePlotPointSerializer (GeoFeatureModelSerializer):
         fields = ['IDPLOT', 'POINT']
        
 class TreePlotAreaSerializer (serializers.ModelSerializer):
-    chart = ['bar']
-    
+
     class Meta:
         model = TreePlot
         fields = ['IDPLOT', 'TPAREA']
 
 class TreePlotRecordsSerializer (serializers.ModelSerializer):
-    chart = ['bar']
     
     class Meta:
         model = TreePlot
         fields = ['IDPLOT', 'TPABUND', 'TPSP']
         
 class TreePlotDiameterSerializer (serializers.ModelSerializer):
-    chart = ['bar']
     
     class Meta:
         model = TreePlot
         fields = ['IDPLOT', 'TPDBH']
         
 class TreePlotHeightSerializer (serializers.ModelSerializer):
-    chart = ['bar']
     
     class Meta:
         model = TreePlot
         fields = ['IDPLOT', 'TPHEIG']
 
 class TreePlotBasalSerializer (serializers.ModelSerializer):
-    chart = ['bar']
     
     class Meta:
         model = TreePlot
         fields = ['IDPLOT', 'TPBAS']
         
 class TreePlotCanopySerializer (serializers.ModelSerializer):
-    chart = ['bar']
     
     class Meta:
         model = TreePlot
@@ -186,7 +173,6 @@ class TreePlotCanopySerializer (serializers.ModelSerializer):
 
 # Colecciones de datos de [AirTemperature]
 class AirTemperatureSerializer (serializers.ModelSerializer):
-    chart = ['raster']
     
     class Meta:
         model = AirTemperature
@@ -195,7 +181,6 @@ class AirTemperatureSerializer (serializers.ModelSerializer):
 
 # Colecciones de datos de [Rainfall]
 class RainfallSerializer (serializers.ModelSerializer):
-    chart = ['raster']
     
     class Meta:
         model = Rainfall
@@ -204,17 +189,23 @@ class RainfallSerializer (serializers.ModelSerializer):
 
 # Colecciones de datos de [LandSurfaceTemperature]
 class LandSurfaceTemperatureSerializer (serializers.ModelSerializer):
-    chart = ['raster']
+    RASTER_URL = serializers.SerializerMethodField()
     
     class Meta:
         model = LandSurfaceTemperature
         geo_field = "RASTER"
-        fields = ['YEAR', 'MONTH', 'DAY', 'LANDSAT', 'RASTER']
+        fields = ['YEAR', 'MONTH', 'DAY', 'LANDSAT', 'RASTER_URL']
+    
+    def get_RASTER_URL(self, obj):
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(reverse("download_lst", args=[obj.ID_NDVI]))
+        else:
+            return request.build_absolute_uri("")
 
 
 # Colecciones de datos de [NDVI]
 class NDVISerializer (serializers.ModelSerializer):
-    chart = ['raster']
     RASTER_URL = serializers.SerializerMethodField()
     
     class Meta:
