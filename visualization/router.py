@@ -59,7 +59,3 @@ router.register("air_temperature", AirTemperatureViewSet, basename='air_temperat
 router.register("rainfall", RainfallViewSet, basename='rainfall_data')
 router.register("landsurface_temperature", LandSurfaceTemperatureViewSet, basename='landsurface_temperature_data')
 router.register("ndvi", NDVIViewSet, basename='ndvi_data')
-
-
-
-

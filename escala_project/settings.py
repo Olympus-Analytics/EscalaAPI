@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'visualization.apps.VisualizationConfig',
     'rest_framework',
+    'rest_framework_gis',
     'django_extensions'
 ]
 CORS_ALLOW_ALL_ORIGINS = True
@@ -55,6 +56,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': "rest_framework.pagination.LimitOffsetPagination",
+    'PAGE_SIZE': 12
+}
 
 ROOT_URLCONF = 'escala_project.urls'
 

@@ -153,3 +153,5 @@ class NDVI (models.Model):
     DAY = models.IntegerField(null=True)
     LANDSAT = models.IntegerField(null=True)
     RASTER = geo_models.RasterField(null=False)
+    
+    
