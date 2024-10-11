@@ -1,9 +1,10 @@
 from rest_framework.response import Response
-from django.db.models import Sum
+from django.db.models import Sum, Count
 
 from .models import Homicides, TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, AirTemperature, Rainfall, LandSurfaceTemperature, NDVI
 
 from rest_framework import viewsets
+import re
 
 
 from .serializer import TrafficCollisionSerializer, TrafficCollisionDateSerializer, TrafficCollisionObjectSerializer, TrafficCollisionPlaceSerializer, TrafficCollisionRoadSerializer, TrafficCollisionSeveritySerializer, TrafficCollisionVictimsNumberSerializer
@@ -12,6 +13,19 @@ from .serializer import TreePlotAreaSerializer, TrafficCollisionVictimsNumberSer
 from .serializer import AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer
 
 from .serializer import HomicidesSerializer, HomicidesDateSerializer, TrafficCollisionSerializer, NeightborhoodSerializer, Locality_barSerializer, UPZSerializer, ZATSerializer, UrbanPerimeterSerializer, MunicipalitySerializer, TreePlotSerializer, AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer
+
+#Chart Domains
+BAR = 'bar'
+LINE = 'line'
+
+# Filters
+YEARS = "YY"
+MONTHS = "MM"
+DAYS = "DD"
+HOURS = "HH"
+MUNICIPALITY = "Municipality"
+LOCALITY = "Locality"
+NEIGHTBORHOOD = "Neightborhood"
 
 # Domains
 Dom_ZONE = {
@@ -77,6 +91,114 @@ class TrafficCollisionViewSet (viewsets.ModelViewSet):
     queryset = TrafficCollision.objects.all()
     serializer_class = TrafficCollisionSerializer
 
+'''
+[Traffic Collision] Count Query
+QueryParams:
+- filter: one of (YY, MM, DD, HH, Municipality, Locality, Neightborhood)
+- time: (First [YEAR], Last [YEAR])
+- space: (List of [Neightborhood])
+'''
+class TrafficCollisionCountViewSet (viewsets.ModelViewSet):
+    queryset = TrafficCollision.objects.all()
+    serializer_class = TrafficCollisionDateSerializer
+    
+    def list (self, request, *args, **kwargs):
+        params = self.request.query_params
+        
+        label = "Traffic Collision"
+        time_list = []
+        space_list = []
+        
+        data_list = []
+        
+        print(f"FILTER {params}")
+        
+        if 'time' in params:
+            years_list = list(TrafficCollision.objects.order_by('COLYEAR').values_list('COLYEAR', flat=True).distinct())
+            years_filtered = [int(year) for year in re.findall(r'[0-9]+', params.get('time'))]
+            
+            start = years_list.index(years_filtered[0])
+            end = years_list.index(years_filtered[1])
+            
+            time_list = years_list[start:end+1]
+        else:
+            time_list = list(TrafficCollision.objects.order_by('COLYEAR').values_list('COLYEAR', flat=True).distinct())
+                
+        if 'space' in params:
+            #neight_list = [year['COLYEAR'] for year in list(TrafficCollision.objects.values('COLYEAR').order_by('COLYEAR').distinct())]
+            pass
+        
+        if 'filter' in params:
+            query_filter = params.get('filter')
+            
+            if YEARS in query_filter:
+                list_years = {year: 0 for year in time_list}
+                print(list_years)
+                
+                label += " count per years"
+                labels = list_years.keys()
+                data = list(TrafficCollision.objects.filter(COLYEAR__in=time_list).order_by().values("COLYEAR").order_by("COLYEAR").annotate(count=Count("POINT")))
+                for value in data:
+                    list_years[value['COLYEAR']] = value['count']
+                
+                data_list = list_years.values()
+            elif MONTHS in query_filter:
+                months_per_year = [i for i in range(1, 13)]
+                list_months = {f'{year}/{month}': 0 for year in time_list
+                                                    for month in months_per_year}
+                
+                label += " count per months"
+                labels = list_months.keys()
+                data = list(TrafficCollision.objects.filter(COLYEAR__in=time_list).order_by().values("COLYEAR", "COLMONTH").order_by("COLYEAR", "COLMONTH").annotate(count=Count("POINT")))
+                for value in data:
+                    list_months[f'{value['COLYEAR']}/{value['COLMONTH']}/'] = value['count']
+                
+                data_list = list_months.values()
+            elif DAYS in query_filter:
+                days_for_month = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+                months_per_year = [i for i in range(1, 13)]
+                list_days = {f'{year}/{month}/{day}': 0 for year in time_list
+                                                        for i, month in enumerate(months_per_year) 
+                                                        for day in range(1, days_for_month[i]+1)}
+                
+                label += " count per days"
+                labels = list_days.keys()
+                data = list(TrafficCollision.objects.filter(COLYEAR__in=time_list).order_by().values("COLYEAR", "COLMONTH", "COLDAY").order_by("COLYEAR", "COLMONTH", "COLDAY").annotate(count=Count("POINT")))
+                for value in data:
+                    list_days[f'{value['COLYEAR']}/{value['COLMONTH']}/{value['COLDAY']}'] = value['count']
+                
+                data_list = list_days.values()
+            elif HOURS in query_filter:
+                list_hours = {hour: 0 for hour in list(range(0, 24))}
+                
+                label += "count per hours"
+                labels = list_hours.keys()
+                
+                data = list(TrafficCollision.objects.filter(COLYEAR__in=time_list).order_by().values("COLHOUR").order_by("COLHOUR").annotate(count=Count("POINT")))
+                for value in data:
+                    list_hours[value['COLHOUR']] = value['count']
+                    
+                data_list = list_hours.values()
+                print(data_list)
+            elif MUNICIPALITY in query_filter:
+                pass
+            elif LOCALITY in query_filter:
+                pass
+            elif NEIGHTBORHOOD in query_filter:
+                pass
+
+        dataset = {'label': label, 'data': data_list}
+        
+        response = {
+            'labels': labels, 
+            'datasets': dataset, 
+            'chart': [BAR, LINE]
+            }
+        
+        return Response(response)
+    
+    
+    
 class TrafficColissionPerYearViewSet (viewsets.ModelViewSet):
     def list (self, request):
         # Get Years Registered (Unique Values on Column)

@@ -2,7 +2,7 @@ from rest_framework import routers
 
 from .viewsets import HomicidesDateViewSet, HomicidesViewSet, TrafficCollisionViewSet, NeightborhoodViewSet, Locality_barViewSet, UPZViewSet, ZATViewSet, UrbanPerimeterViewSet, MunicipalityViewSet, TreePlotViewSet, AirTemperatureViewSet, RainfallViewSet, LandSurfaceTemperatureViewSet, NDVIViewSet
 
-from .viewsets import TrafficColissionPerYearViewSet, TrafficColissionPerMonthViewSet, TrafficColissionPerDaysViewSet, TrafficColissionPerHourViewSet
+from .viewsets import TrafficColissionPerYearViewSet, TrafficColissionPerMonthViewSet, TrafficColissionPerDaysViewSet, TrafficColissionPerHourViewSet, TrafficCollisionCountViewSet
 from .viewsets import TrafficCollisionObjectViewSet, TrafficCollisionObjectTypeViewSet
 from .viewsets import TrafficCollisionAreaViewSet, TrafficCollisionZoneViewSet
 from .viewsets import TrafficCollisionVictimsNumberYearViewSet, TrafficCollisionVictimsNumberMonthViewSet
@@ -19,12 +19,17 @@ router.register("homicides", HomicidesViewSet, basename='homicides_data')
 router.register("homicides_date", HomicidesDateViewSet, basename='homicides_date_data')
 
 # GEOGRAPHIC LAYERS
+# Extraer todos los datos
 router.register("traffic_collisions", TrafficCollisionViewSet, basename='traffic_collisions_data')
+
+# Conteos por filtro [TEMPORAL]
+router.register("traffic_collisions_count", TrafficCollisionCountViewSet, basename='traffic_collisions_count')
 router.register("traffic_collisions_year", TrafficColissionPerYearViewSet, basename='traffic_collisions_year')
 router.register("traffic_collisions_month", TrafficColissionPerMonthViewSet, basename='traffic_collisions_month')
 router.register("traffic_collisions_day", TrafficColissionPerDaysViewSet, basename='traffic_collisions_day')
 router.register("traffic_collisions_hour", TrafficColissionPerHourViewSet, basename='traffic_collisions_hour')
 
+ 
 router.register("traffic_collisions_object", TrafficCollisionObjectViewSet, basename='traffic_collisions_object')
 router.register("traffic_collisions_object_type", TrafficCollisionObjectTypeViewSet, basename='traffic_collisions_object_type')
 
