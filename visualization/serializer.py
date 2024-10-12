@@ -1,27 +1,10 @@
-from .models import Homicides, TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, LandSurfaceTemperature, NDVI, Rainfall, AirTemperature
+from .models import TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, LandSurfaceTemperature, NDVI, Rainfall, AirTemperature
 
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
             
-# Colecciones de datos de [Homicides]     
-class HomicidesSerializer (serializers.ModelSerializer):
-    
-    class Meta:
-        model = Homicides
-        fields = ['HOMYEAR', 'HOMMONTH', 'HOMDAY', 'HOMDAYWEEK', 'HOMHOUR',
-                  'HOMMIN', 'HOMAREA', 'HOMSITE', 'HOMWPN', 'HOMASLT',
-                  'HOMVICT', 'HOMVICAGE', 'HOMVICSEX', 'HOMVICMS',
-                  'HOMVICCB', 'HOMVICES', 'HOMVICPRO', 'HOMVICEL',
-                  'ID_NEIGHB']
-        
-class HomicidesDateSerializer (serializers.ModelSerializer):
-    
-    class Meta:
-        model = Homicides
-        fields = ['HOMYEAR', 'HOMMONTH', 'HOMDAY', 'HOMDAYWEEK', 'HOMHOUR',
-                  'HOMMIN', 'ID_NEIGHB']
 
 # Colecciones de datos de [TrafficCollision]
 class TrafficCollisionSerializer (GeoFeatureModelSerializer):
@@ -33,36 +16,12 @@ class TrafficCollisionSerializer (GeoFeatureModelSerializer):
                   'COLZONE', 'COLAREA', 'COLVICNUM', 'COLSEV', 'COLTYP', 'COLOBJ',
                   'COLOBJTYP', 'COLHYP', 'COLADDR', 'POINT']
 
-class TrafficCollisionDateSerializer (serializers.ModelSerializer):    
-    class Meta:
-        model = TrafficCollision
-        fields = ['COLID', 'COLYEAR', 'COLMONTH', 'COLDAY', 'COLHOUR']
-        
-class TrafficCollisionVictimsNumberSerializer (serializers.ModelSerializer):    
-    class Meta:
-        model = TrafficCollision
-        fields = ['COLID', 'COLYEAR', 'COLMONTH', 'COLVICNUM']
-        
-class TrafficCollisionPlaceSerializer (GeoFeatureModelSerializer):   
-    class Meta:
-        model = TrafficCollision
-        fields = ['COLID', 'COLZONE', 'COLAREA', 'POINT']
-        
-class TrafficCollisionSeveritySerializer (serializers.ModelSerializer):
-    class Meta:
-        model = TrafficCollision
-        fields = ['COLID', 'COLSEV']
-        
-class TrafficCollisionRoadSerializer (serializers.ModelSerializer):    
-    class Meta:
-        model = TrafficCollision
-        fields = ['COLID', 'COLTYP']
-        
-class TrafficCollisionObjectSerializer (serializers.ModelSerializer):
+class TrafficCollisionPointSerializer (GeoFeatureModelSerializer):
     
     class Meta:
         model = TrafficCollision
-        fields = ['COLID', 'COLOBJ', 'COLOBJTYP']
+        geo_field = "POINT"
+        fields = ['COLID', 'POINT']
 
 # Colecciones de datos de [Neightborhood]
 class NeightborhoodSerializer (GeoFeatureModelSerializer):
@@ -134,42 +93,6 @@ class TreePlotPointSerializer (GeoFeatureModelSerializer):
         model = TreePlot
         geo_field = "POINT"
         fields = ['IDPLOT', 'POINT']
-       
-class TreePlotAreaSerializer (serializers.ModelSerializer):
-
-    class Meta:
-        model = TreePlot
-        fields = ['IDPLOT', 'TPAREA']
-
-class TreePlotRecordsSerializer (serializers.ModelSerializer):
-    
-    class Meta:
-        model = TreePlot
-        fields = ['IDPLOT', 'TPABUND', 'TPSP']
-        
-class TreePlotDiameterSerializer (serializers.ModelSerializer):
-    
-    class Meta:
-        model = TreePlot
-        fields = ['IDPLOT', 'TPDBH']
-        
-class TreePlotHeightSerializer (serializers.ModelSerializer):
-    
-    class Meta:
-        model = TreePlot
-        fields = ['IDPLOT', 'TPHEIG']
-
-class TreePlotBasalSerializer (serializers.ModelSerializer):
-    
-    class Meta:
-        model = TreePlot
-        fields = ['IDPLOT', 'TPBAS']
-        
-class TreePlotCanopySerializer (serializers.ModelSerializer):
-    
-    class Meta:
-        model = TreePlot
-        fields = ['IDPLOT', 'TPCAREA', 'TPCAPLOT', 'TPCCV']
 
 # Colecciones de datos de [AirTemperature]
 class AirTemperatureSerializer (serializers.ModelSerializer):

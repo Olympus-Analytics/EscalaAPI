@@ -1,6 +1,5 @@
 from django.http import HttpResponse, JsonResponse
 from django.views import View
-from django.contrib.gis.gdal import GDALRaster
 
 from .models import NDVI, LandSurfaceTemperature
 

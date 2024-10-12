@@ -2,31 +2,6 @@ from django.db import models
 from django.contrib.gis.db import models as geo_models
 
 # TABLES
-
-class Homicides (models.Model):
-    HOMYEAR = models.IntegerField() 
-    HOMMONTH = models.IntegerField() 
-    HOMDAY = models.IntegerField() 
-    HOMDAYWEEK = models.IntegerField() 
-    HOMHOUR = models.IntegerField() 
-    HOMMIN = models.IntegerField() 
-    HOMAREA = models.IntegerField() 
-    HOMSITE = models.IntegerField() 
-    HOMWPN = models.IntegerField() 
-    HOMASLT = models.IntegerField() 
-    HOMVICT = models.IntegerField() 
-    HOMVICAGE = models.IntegerField() 
-    HOMVICSEX = models.IntegerField() 
-    HOMVICMS = models.IntegerField() 
-    HOMVICCB = models.IntegerField() 
-    HOMVICES = models.IntegerField() 
-    HOMVICPRO = models.IntegerField() 
-    HOMVICEL = models.IntegerField() 
-    
-    ID_NEIGHB = models.ForeignKey(
-        "Neightborhood", on_delete=models.CASCADE)
-
-
 class AirTempWS (models.Model):
     TEMP_MEAN = models.FloatField()
     TEMP_MAX = models.FloatField()
@@ -73,6 +48,10 @@ class TrafficCollision (models.Model):
     COLHYP = models.CharField(max_length = 250)
     COLADDR = models.CharField(max_length = 53)
     POINT = geo_models.PointField()
+    
+    ID_NEIGHB = models.ForeignKey(
+        "Neightborhood", on_delete=models.CASCADE)
+
     
     # Conectar al ID del Barrio o zona geográfica del accidente
 
@@ -122,6 +101,9 @@ class TreePlot (models.Model):
     TPCAPLOT = models.FloatField()
     TPCCV = models.FloatField()
     POINT = geo_models.PointField(null=True)
+    
+    ID_NEIGHB = models.ForeignKey(
+        "Neightborhood", on_delete=models.CASCADE)
     
 
 # RASTERS
