@@ -124,13 +124,11 @@ class EscalaFilter:
         max = class_.objects.aggregate(Max(columns[col]))[f"{columns[col]}__max"]
         min = class_.objects.aggregate(Min(columns[col]))[f"{columns[col]}__min"]
         range_list = np.linspace(max, min, 10)[::-1]
-        print(range_list)
         
         list_values = {
             f'{round(value, 2)}-{round(range_list[i+1], 2)}': class_.objects.filter(**{f"{columns[col]}__range":(value, range_list[i+1])}).aggregate(count=Count(columns[col]))['count']
             for i, value, in enumerate(range_list[:-1])
             }
-        print(list_values)
             
         return [list_values.keys(), list_values.values()]
 
@@ -415,10 +413,36 @@ class RainfallViewSet (viewsets.ModelViewSet):
 class LandSurfaceTemperatureViewSet (viewsets.ModelViewSet):
     queryset = LandSurfaceTemperature.objects.all()
     serializer_class = LandSurfaceTemperatureSerializer
+    
+    def list (self, request):
+        params = self.request.query_params
+        
+        print(params)
+        if 'YY' in params:
+            queryset = LandSurfaceTemperature.objects.filter(YEAR=params.get("YY"))
+        elif 'ID' in params:
+            queryset = LandSurfaceTemperature.objects.filter(ID_LST=params.get("ID"))
+        else:
+            queryset = LandSurfaceTemperature.objects.all()
+        
+        serializer = LandSurfaceTemperatureSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data[0])
 
 # Colección de ViewSets para [NDVI] 
 class NDVIViewSet (viewsets.ModelViewSet):
-    queryset = NDVI.objects.all()
     serializer_class = NDVISerializer
-
-
+    
+    def list (self, request):
+        params = self.request.query_params
+        
+        print(params)
+        if 'YY' in params:
+            queryset = NDVI.objects.filter(YEAR=params.get("YY"))
+        elif 'ID' in params:
+            queryset = NDVI.objects.filter(ID_NDVI=params.get("ID"))
+        else:
+            queryset = NDVI.objects.all()
+        
+        serializer = NDVISerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data[0])
+        

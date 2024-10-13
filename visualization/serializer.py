@@ -117,7 +117,7 @@ class LandSurfaceTemperatureSerializer (serializers.ModelSerializer):
     class Meta:
         model = LandSurfaceTemperature
         geo_field = "RASTER"
-        fields = ['YEAR', 'MONTH', 'DAY', 'LANDSAT', 'RASTER_URL']
+        fields = ['YEAR', 'RASTER_URL']
     
     def get_RASTER_URL(self, obj):
         request = self.context.get('request')
@@ -134,7 +134,7 @@ class NDVISerializer (serializers.ModelSerializer):
     class Meta:
         model = NDVI
         geo_field = "RASTER"
-        fields = ['YEAR', 'MONTH', 'DAY', 'LANDSAT', 'RASTER_URL']
+        fields = ['YEAR', 'RASTER_URL']
         
     def get_RASTER_URL(self, obj):
         request = self.context.get('request')

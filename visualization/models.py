@@ -30,6 +30,9 @@ class WeatherStation (models.Model):
     ID_ST =models.CharField(max_length = 10, primary_key=True)
     NAME = models.CharField(max_length = 50)
     POINT = geo_models.PointField()
+    
+    ID_NEIGHB = models.ForeignKey(
+        "Neightborhood", on_delete=models.CASCADE, null=True)
 
 class TrafficCollision (models.Model):
     COLID = models.IntegerField(primary_key=True)
@@ -50,7 +53,7 @@ class TrafficCollision (models.Model):
     POINT = geo_models.PointField()
     
     ID_NEIGHB = models.ForeignKey(
-        "Neightborhood", on_delete=models.CASCADE)
+        "Neightborhood", on_delete=models.CASCADE, null=True)
 
     
     # Conectar al ID del Barrio o zona geográfica del accidente
@@ -58,6 +61,7 @@ class TrafficCollision (models.Model):
 class Neightborhood (models.Model):
     ID_NEIGHB = models.CharField(max_length = 11, primary_key=True)
     NAME = models.CharField(max_length = 50)
+    AREA = models.FloatField()
     POLY = geo_models.MultiPolygonField()
     
     LOCALITY = models.ForeignKey(
@@ -66,9 +70,11 @@ class Neightborhood (models.Model):
 class Locality_bar (models.Model):
     ID_LOCALITY = models.CharField(max_length = 11, primary_key=True)
     NAME = models.CharField(max_length = 50)
+    AREA = models.FloatField()
     POLY = geo_models.MultiPolygonField()
     
-    # Conectar al ID del [Municipality]
+    MUNICIPALITY = models.ForeignKey(
+        "Municipality", on_delete=models.CASCADE)
     
 class UPZ (models.Model):
     ID_UPZ = models.CharField(max_length = 10, primary_key=True)
@@ -87,6 +93,7 @@ class UrbanPerimeter (models.Model):
 class Municipality (models.Model):
     ID_MUN = models.CharField(max_length = 10, primary_key=True)
     NAME = models.CharField(max_length = 50)
+    AREA = models.FloatField()
     POLY = geo_models.MultiPolygonField(dim=3)
     
 class TreePlot (models.Model):
@@ -103,7 +110,7 @@ class TreePlot (models.Model):
     POINT = geo_models.PointField(null=True)
     
     ID_NEIGHB = models.ForeignKey(
-        "Neightborhood", on_delete=models.CASCADE)
+        "Neightborhood", on_delete=models.CASCADE, null=True)
     
 
 # RASTERS
@@ -135,5 +142,3 @@ class NDVI (models.Model):
     DAY = models.IntegerField(null=True)
     LANDSAT = models.IntegerField(null=True)
     RASTER = geo_models.RasterField(null=False)
-    
-    

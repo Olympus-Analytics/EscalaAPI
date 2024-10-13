@@ -13,5 +13,5 @@ services:
     volumes:
       - .:/app  # Solo durante el desarrollo para trabajar con los archivos locales
     command: >
-      bash -c "python manage.py makemigrations &&
-               python manage.py migrate"
+      bash -c "python manage.py migrate &&
+               python manage.py runserver 0.0.0.0:8000"
