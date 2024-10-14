@@ -1,10 +1,13 @@
 from django.http import HttpResponse, JsonResponse
+from rest_framework.response import Response
 from django.views import View
+from django.templatetags.static import static
+from django.shortcuts import render
 
 from .models import NDVI, LandSurfaceTemperature
 
 # Create your views here.
-class NDVIView (View):
+class NDVIDownloadView (View):
     
     def get (self, request, raster_id, *args, **kwargs):
         try:
@@ -21,7 +24,7 @@ class NDVIView (View):
         
         return response
     
-class LSTView (View):
+class LSTDownloadView (View):
     
     def get (self, request, raster_id, *args, **kwargs):
         try:

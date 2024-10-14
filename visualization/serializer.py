@@ -4,6 +4,7 @@ from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
+from django.templatetags.static import static
             
 
 # Colecciones de datos de [TrafficCollision]
@@ -121,14 +122,40 @@ class LandSurfaceTemperatureSerializer (serializers.ModelSerializer):
     
     def get_RASTER_URL(self, obj):
         request = self.context.get('request')
+        return request.build_absolute_uri(static(f'LST_bar/{obj.ID_LST}.tif'))
+
+
+# Colecciones de datos de [NDVI]
+class NDVISerializer (serializers.ModelSerializer):
+    RASTER_URL = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = NDVI
+        geo_field = "RASTER"
+        fields = ['YEAR', 'RASTER_URL']
+        
+    def get_RASTER_URL(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(static(f'NDVI_bar/{obj.ID_NDVI}.tif'))
+
+
+# Colecciones de datos de [LandSurfaceTemperature]
+class LSTDownloadSerializer (serializers.ModelSerializer):
+    RASTER_URL = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LandSurfaceTemperature
+        geo_field = "RASTER"
+        fields = ['YEAR', 'RASTER_URL']
+    
+    def get_RASTER_URL(self, obj):
+        request = self.context.get('request')
         if request:
             return request.build_absolute_uri(reverse("download_lst", args=[obj.ID_NDVI]))
         else:
             return request.build_absolute_uri("")
 
-
-# Colecciones de datos de [NDVI]
-class NDVISerializer (serializers.ModelSerializer):
+class NDVIDownloadSerializer (serializers.ModelSerializer):
     RASTER_URL = serializers.SerializerMethodField()
     
     class Meta:

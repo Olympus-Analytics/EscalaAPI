@@ -17,16 +17,19 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from django.conf.urls.static import static 
+from django.conf import settings 
+
 from visualization import router as visualization_api_router
-from visualization.views import NDVIView, LSTView
+from visualization.views import NDVIDownloadView, LSTDownloadView
 
 import sys
 sys.path.insert(0, r"C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala")
 
 api_url_patterns = [
     path(r'data/', include(visualization_api_router.router.urls)),
-    path(r"download/raster/ndvi/<str:raster_id>/", NDVIView.as_view(), name="download_ndvi"),
-    path(r"download/raster/lst/<str:raster_id>/", LSTView.as_view(), name="download_lst")
+    path(r"download/raster/ndvi/<str:raster_id>/", NDVIDownloadView.as_view(), name="download_ndvi"),
+    path(r"download/raster/lst/<str:raster_id>/", LSTDownloadView.as_view(), name="download_lst")
 ]
 
 urlpatterns = [
