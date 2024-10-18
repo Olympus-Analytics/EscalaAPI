@@ -6,6 +6,13 @@ Username: olympus
 Email: administrativo@olympus-analytics.dev
 Password: 123456789
 
+<EndPoints List>
+  -> TrafficCollisions
+  -> TreePlot
+  -> Spatial Filters
+  -> Rasters
+
+
 
 DATABASE CREDENTIALS:
 Platform: Aiven
