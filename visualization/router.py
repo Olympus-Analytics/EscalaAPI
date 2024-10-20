@@ -2,8 +2,8 @@ from rest_framework import routers
 
 from .viewsets import NeightborhoodViewSet, Locality_barViewSet, UPZViewSet, ZATViewSet, UrbanPerimeterViewSet, MunicipalityViewSet, TreePlotViewSet, AirTemperatureViewSet, RainfallViewSet, LandSurfaceTemperatureViewSet, NDVIViewSet
 
-from .viewsets import TrafficCollisionViewSet, TrafficCollisionPointViewSet, TrafficCollisionCountViewSet
-from .viewsets import TreePlotViewSet, TreePlotPointViewSet, TreePlotCountViewSet
+from .viewsets import TrafficCollisionViewSet, TrafficCollisionPointViewSet, TrafficCollisionCountViewSet, TrafficCollisionAreaCountViewSet
+from .viewsets import TreePlotViewSet, TreePlotPointViewSet, TreePlotCountViewSet, TreePlotAreaCountViewSet
 
 app_name = "visualization"
 
@@ -15,11 +15,13 @@ router = routers.DefaultRouter()
 router.register("traffic_collisions", TrafficCollisionViewSet, basename='traffic_collisions_data')
 router.register("traffic_collisions_point", TrafficCollisionPointViewSet, basename='traffic_collisions_point')
 router.register("traffic_collisions_count", TrafficCollisionCountViewSet, basename='traffic_collisions_count')
+router.register("traffic_collisions_area_count", TrafficCollisionAreaCountViewSet, basename="traffic_collisions_area_count")
 
 # [TreePlot] EndPoints
 router.register("tree_plot", TreePlotViewSet, basename='tree_plot_data')
 router.register("tree_plot_point", TreePlotPointViewSet, basename='tree_plot_point')
 router.register("tree_plot_count", TreePlotCountViewSet, basename='tree_plot_count')
+router.register("tree_plot_area_count", TreePlotAreaCountViewSet, basename='tree_plot_area_count')
 
 # Spatial Filters EndPoints
 router.register("neightborhood", NeightborhoodViewSet, basename='neightborhood_data')

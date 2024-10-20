@@ -208,6 +208,94 @@ class EscalaFilter:
         
         return [labels, list_mun.values()]
     
+    def filterByNeighborhoodArea (self, class_, space_list, time_list, columns):
+        list_neigh = {neigh: 0 for neigh in space_list}
+        
+        neigh_data = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=list_neigh.keys()).values("NAME", "ID_NEIGHB", "AREA"))
+        
+        print([neigh['NAME'] for neigh in neigh_data if neigh['NAME'] != 'NA'])
+        
+        neigh_info = {neigh['ID_NEIGHB']: neigh['AREA'] for neigh in neigh_data}
+        labels = [neigh['NAME'].replace("_", " ") for neigh in neigh_data if neigh['NAME'] != 'NA']
+        
+        print(neigh_info)
+        
+        if class_ is TrafficCollision:        
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        for value in data:
+            list_neigh[value[columns[NEIGHTBORHOOD]]] = value['count'] / neigh_info[value[columns[NEIGHTBORHOOD]]]
+        
+        # Aggregate all 'NA' neighborhoods on 'Others'
+        others_list = ['NBAR026', 'NBAR028', 'NBAR082', 'NBAR025', 'NBAR029', 'NBAR057', 'NBAR067']
+        NA_neigh = [neigh for neigh in list_neigh.keys() if neigh in others_list]
+        
+        if (len(NA_neigh) > 0):
+            labels.append('OTHERS')
+            list_neigh['OTHERS'] = 0
+            others_area = 0
+            
+            for neigh in NA_neigh:
+                others_area += neigh_info[neigh]
+                list_neigh['OTHERS'] += list_neigh[neigh]
+                list_neigh.pop(neigh)
+            list_neigh['OTHERS'] = list_neigh['OTHERS'] / others_area
+            
+        for neigh in list_neigh.keys():
+            list_neigh[neigh] = round(list_neigh[neigh], 3)
+        
+        return [labels, list_neigh.values()]
+    
+    def filterByLocalityArea (self, class_, space_list, time_list, columns):
+        loc_by_neigh = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY"))}
+        list_loc = {loc: 0 for loc in list(set([loc for loc in loc_by_neigh.values()]))}
+        
+        list_loc = {loc: 0 for loc in list(set([neigh for neigh in loc_by_neigh.values()]))}
+        loc_data = list(Locality_bar.objects.all().filter(ID_LOCALITY__in=list_loc.keys()).values("ID_LOCALITY", "AREA", "NAME"))
+        
+        locality_info = {loc['ID_LOCALITY']: loc['AREA'] for loc in loc_data}
+        labels = [loc['NAME']for loc in loc_data]
+        
+        if class_ is TrafficCollision:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else: 
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        
+        for value in data:
+            neigh = value[columns[NEIGHTBORHOOD]]
+            locality = loc_by_neigh[neigh]
+            list_loc[locality] += value['count'] / locality_info[locality]
+            
+        for loc in list_loc.keys():
+            list_loc[loc] = round(list_loc[loc], 3)
+        
+        return [labels, list_loc.values()]
+    
+    def filterByMunicipalityArea (self, class_, space_list, time_list, columns):
+        loc_by_neigh = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY"))}
+        loc_by_mun = {neigh["ID_LOCALITY"]: neigh["MUNICIPALITY"] for neigh in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_by_neigh.values()).values("ID_LOCALITY", "MUNICIPALITY"))}
+        mun_by_neigh = {neigh: loc_by_mun[loc_by_neigh[neigh]] for neigh in loc_by_neigh.keys()}
+        
+        list_mun = {mun: 0 for mun in list(set([mun for mun in mun_by_neigh.values()]))}
+        mun_data = list(Municipality.objects.all().filter(ID_MUN__in=list_mun.keys()).values("ID_MUN", "AREA", "NAME"))
+        
+        mun_info = {loc['ID_MUN']: loc['AREA'] for loc in mun_data}
+        labels = [loc['NAME'] for loc in mun_data]
+        
+        if class_ is TrafficCollision:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        for value in data:
+            neigh = value[columns[NEIGHTBORHOOD]]
+            municipality = mun_by_neigh[neigh]
+            list_mun[municipality] += value['count'] / mun_info[municipality]
+            
+        for mun in list_mun.keys():
+            list_mun[mun] = round(list_mun[mun], 3)
+        
+        return [labels, list_mun.values()]
     
 # Colección de ViewSets para [TrafficCollision] 
 class TrafficCollisionViewSet (viewsets.ModelViewSet):
@@ -360,6 +448,62 @@ class TrafficCollisionCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         
         return Response(response)
 
+'''
+[TrafficCollision] Area Count Query
+QueryParams:
+- filter: one of (municipality, locality, neightborhood)
+- time: (First [YEAR], Last [YEAR])
+- space: (List of [Neightborhood])
+'''
+class TrafficCollisionAreaCountViewSet (viewsets.ModelViewSet, EscalaFilter):
+    queryset = TrafficCollision.objects.all()
+    serializer_class = TrafficCollisionSerializer
+    
+    def searchByFilter (self, class_, space_list, time_list, columns, params):
+        if 'filter' in params:
+            query_filter = params.get('filter')
+            
+            if MUNICIPALITY in query_filter:
+                chart = [BAR]
+                return self.filterByMunicipalityArea(class_, space_list, time_list, columns) + [chart]
+            elif LOCALITY in query_filter:
+                chart = [BAR]
+                return self.filterByLocalityArea(class_, space_list, time_list, columns) + [chart]
+            elif NEIGHTBORHOOD in query_filter:
+                chart = [BAR]
+                return self.filterByNeighborhoodArea(class_, space_list, time_list, columns) + [chart]  
+            else:
+                return [], [], []
+        else:
+            return [], [], []
+    
+    def list (self, request, *args, **kwargs):
+        params = self.request.query_params
+        
+        COLUMNS = {
+            YEARS: "COLYEAR",
+            MONTHS: "COLMONTH",
+            DAYS: "COLDAY",
+            HOURS: "COLHOUR",
+            NEIGHTBORHOOD: "ID_NEIGHB",
+        }
+
+        label = "Traffic Collision/Hectare"
+        time_list = self.timeFilter(TrafficCollision, COLUMNS[YEARS], params)
+        space_list = self.spaceFilter(TrafficCollision, COLUMNS[NEIGHTBORHOOD], params)
+        
+        labels, data_list, charts = self.searchByFilter(TrafficCollision, space_list, time_list, COLUMNS, params)
+
+        dataset = {'label': label, 'data': data_list}
+        response = {
+            'labels': labels, 
+            'datasets': dataset, 
+            'chart': charts
+            }
+        
+        return Response(response)
+
+
 # Colección de ViewSets para [TreePlot] 
 class TreePlotViewSet (viewsets.ModelViewSet):
     queryset = TreePlot.objects.all()
@@ -445,7 +589,57 @@ class TreePlotCountViewSet (viewsets.ModelViewSet, EscalaFilter):
             }
         
         return Response(response)
+
+'''
+[TreePlot] Area Count Query
+QueryParams:
+- filter: one of (municipality, locality, neightborhood)
+- time: (First [YEAR], Last [YEAR])
+- space: (List of [Neightborhood])
+'''
+class TreePlotAreaCountViewSet (viewsets.ModelViewSet, EscalaFilter):
+    queryset = TreePlot.objects.all()
+    serializer_class = TreePlotSerializer
     
+    def searchByFilter (self, class_, space_list, columns, params):
+        if 'filter' in params:
+            query_filter = params.get('filter')
+            
+            if MUNICIPALITY in query_filter:
+                chart = [BAR]
+                return self.filterByMunicipalityArea(class_, space_list, [], columns) + [chart]
+            elif LOCALITY in query_filter:
+                chart = [BAR]
+                return self.filterByLocalityArea(class_, space_list, [], columns) + [chart]
+            elif NEIGHTBORHOOD in query_filter:
+                chart = [BAR]
+                return self.filterByNeighborhoodArea(class_, space_list, [], columns) + [chart]  
+            else:
+                return [], [], []
+        else:
+            return [], [], []
+    
+    def list (self, request, *args, **kwargs):
+        params = self.request.query_params
+        
+        COLUMNS = {
+            NEIGHTBORHOOD: "ID_NEIGHB",
+        }
+
+        label = "Tree Plot/Hectare"
+        space_list = self.spaceFilter(TreePlot, COLUMNS[NEIGHTBORHOOD], params)
+        
+        labels, data_list, charts = self.searchByFilter(TreePlot, space_list, COLUMNS, params)
+
+        dataset = {'label': label, 'data': data_list}
+        response = {
+            'labels': labels, 
+            'datasets': dataset, 
+            'chart': charts
+            }
+        
+        return Response(response)
+
 # Colección de ViewSets para [Neightborhood]
 class NeightborhoodViewSet (viewsets.ModelViewSet):
     queryset = Neightborhood.objects.all()
