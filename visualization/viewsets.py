@@ -5,6 +5,7 @@ from .models import TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, Urb
 
 from rest_framework import viewsets
 import re
+import ast
 import numpy as np
 
 
@@ -28,7 +29,7 @@ DAYS = "DD"
 HOURS = "HH"
 MUNICIPALITY = "municipality"
 LOCALITY = "locality"
-NEIGHTBORHOOD = "neightborhood"
+NEIGHTBORHOOD = "neighborhood"
 
 # Filters [TrafficCollision] Only
 ZONE = "zone"
@@ -64,57 +65,65 @@ class EscalaFilter:
        
     def spaceFilter (self, class_, space_col, params):
         if 'space' in params:
-            pass
+            filter = ast.literal_eval(params.get('space'))
+            
+            space_list = list(Neightborhood.objects.filter(NAME__in=filter).values('ID_NEIGHB', 'NAME'))
+            space_filtered = [neigh['ID_NEIGHB'] for neigh in space_list]
+            
+            return space_filtered
         else:
-            pass
+            space_list = list(Neightborhood.objects.values('ID_NEIGHB'))
+            space_filtered = [neigh['ID_NEIGHB'] for neigh in space_list]
+            
+            return space_filtered
 
-    def filterByYear (self, class_, time_list, columns):
+    def filterByYear (self, class_, space_list, time_list, columns):
         list_years = {year: 0 for year in time_list}
                 
-        data = list(class_.objects.filter(COLYEAR__in=time_list).order_by().values(columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
+        data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
         for value in data:
             list_years[value[columns[YEARS]]] = value['count']
             
         return [list_years.keys(), list_years.values()]
     
-    def filterByMonth (self, class_, time_list, columns):
+    def filterByMonth (self, class_, space_list, time_list, columns):
         months_per_year = [i for i in range(1, 13)]
         list_months = {f'{year}/{month}': 0 for year in time_list
                                             for month in months_per_year}
         
-        data = list(class_.objects.filter(COLYEAR__in=time_list).order_by().values(columns[YEARS], columns[MONTHS]).order_by(columns[YEARS], columns[MONTHS]).annotate(count=Count(columns[YEARS])))
+        data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS], columns[MONTHS]).order_by(columns[YEARS], columns[MONTHS]).annotate(count=Count(columns[YEARS])))
         for value in data:
             list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}/'] = value['count']
                 
         return [list_months.keys(), list_months.values()]
 
-    def filterByDays (self, class_, time_list, columns):
+    def filterByDays (self, class_, space_list, time_list, columns):
         days_for_month = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
         months_per_year = [i for i in range(1, 13)]
         list_days = {f'{year}/{month}/{day}': 0 for year in time_list
                                                 for i, month in enumerate(months_per_year) 
                                                 for day in range(1, days_for_month[i]+1)}
                 
-        data = list(class_.objects.filter(COLYEAR__in=time_list).order_by().values(columns[YEARS], columns[MONTHS], columns[DAYS]).order_by(columns[YEARS], columns[MONTHS], columns[DAYS]).annotate(count=Count(columns[YEARS])))
+        data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS], columns[MONTHS], columns[DAYS]).order_by(columns[YEARS], columns[MONTHS], columns[DAYS]).annotate(count=Count(columns[YEARS])))
         for value in data:
             list_days[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}/{value[columns[DAYS]]}'] = value['count']
                 
         return [list_days.keys(), list_days.values()]
     
-    def filterByHours (self, class_, time_list, columns):
+    def filterByHours (self, class_, space_list, time_list, columns):
         list_hours = {hour: 0 for hour in list(range(0, 24))}
                 
-        data = list(class_.objects.filter(COLYEAR__in=time_list).order_by().values(columns[HOURS]).order_by(columns[HOURS]).annotate(count=Count(columns[HOURS])))
+        data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[HOURS]).order_by(columns[HOURS]).annotate(count=Count(columns[HOURS])))
         for value in data:
             list_hours[value[columns[HOURS]]] = value['count']
                     
         return [list_hours.keys(), list_hours.values()]
     
-    def filterByDom (self, class_, time_list, columns, dom_list, dom):
+    def filterByDom (self, class_, space_list, time_list, columns, dom_list, dom):
         list_values = {dom_: 0 for dom_ in dom_list.keys()}
         
         labels = dom_list.values()
-        data = list(class_.objects.filter(COLYEAR__in=time_list).order_by().values(columns[dom]).order_by(columns[dom]).annotate(count=Count(columns[dom])))
+        data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[dom]).order_by(columns[dom]).annotate(count=Count(columns[dom])))
         for value in data:
             list_values[value[columns[dom]]] = value['count']
             
@@ -132,7 +141,74 @@ class EscalaFilter:
             
         return [list_values.keys(), list_values.values()]
 
+    def filterByNeightborhood (self, class_, space_list, time_list, columns):
+        list_neigh = {neigh: 0 for neigh in space_list}
+        labels = [neigh['NAME'].replace("_", " ") for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=list_neigh.keys()).values("NAME")) if neigh['NAME'] != 'NA']
+        
+        if class_ is TrafficCollision:        
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        for value in data:
+            list_neigh[value[columns[NEIGHTBORHOOD]]] = value['count']
+        
+        # Aggregate all 'NA' neighborhoods on 'Others'
+        others_list = ['NBAR026', 'NBAR028', 'NBAR082', 'NBAR025', 'NBAR029', 'NBAR057', 'NBAR067']
+        NA_neigh = [neigh for neigh in list_neigh.keys() if neigh in others_list]
+        
+        if (len(NA_neigh) > 0):
+            labels.append('OTHERS')
+            list_neigh['OTHERS'] = 0
+            
+            for neigh in NA_neigh:
+                list_neigh['OTHERS'] += list_neigh[neigh]
+                list_neigh.pop(neigh)
+        
+        return [labels, list_neigh.values()]
 
+    def filterByLocality (self, class_, space_list, time_list, columns):
+        loc_by_neigh = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY"))}
+        list_loc = {loc: 0 for loc in list(set([loc for loc in loc_by_neigh.values()]))}
+        print(list_loc)
+        
+        list_loc = {loc: 0 for loc in list(Neightborhood.objects.filter(ID_NEIGHB__in=space_list).values_list('LOCALITY', flat=True).distinct())}
+        labels = [loc['NAME']for loc in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=list_loc.keys()).values("NAME"))]
+        
+        if class_ is TrafficCollision:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else: 
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+            
+        for value in data:
+            neigh = value[columns[NEIGHTBORHOOD]]
+            locality = loc_by_neigh[neigh]
+            list_loc[locality] += value['count']
+        
+        return [labels, list_loc.values()]
+    
+    def filterByMunicipality (self, class_, space_list, time_list, columns):
+        loc_by_neigh = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY"))}
+        loc_by_mun = {neigh["ID_LOCALITY"]: neigh["MUNICIPALITY"] for neigh in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_by_neigh.values()).values("ID_LOCALITY", "MUNICIPALITY"))}
+        mun_by_neigh = {neigh: loc_by_mun[loc_by_neigh[neigh]] for neigh in loc_by_neigh.keys()}
+        
+        list_mun = {mun: 0 for mun in list(set([mun for mun in mun_by_neigh.values()]))}
+        print("MUN")
+        print(list_mun)
+        
+        labels = [loc['NAME'] for loc in list(Municipality.objects.all().filter(ID_MUN__in=list_mun.keys()).values("NAME"))]
+        
+        if class_ is TrafficCollision:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        for value in data:
+            neigh = value[columns[NEIGHTBORHOOD]]
+            municipality = mun_by_neigh[neigh]
+            list_mun[municipality] += value['count']
+        
+        return [labels, list_mun.values()]
+    
+    
 # Colección de ViewSets para [TrafficCollision] 
 class TrafficCollisionViewSet (viewsets.ModelViewSet):
     queryset = TrafficCollision.objects.all()
@@ -154,49 +230,49 @@ class TrafficCollisionCountViewSet (viewsets.ModelViewSet, EscalaFilter):
     queryset = TrafficCollision.objects.all()
     serializer_class = TrafficCollisionSerializer
     
-    def searchByFilter (self, class_, time_list, columns, DOMAINS, params):
+    def searchByFilter (self, class_, space_list, time_list, columns, DOMAINS, params):
         if 'filter' in params:
             query_filter = params.get('filter')
             
             if YEARS in query_filter:
                 chart = [BAR, LINE]
-                return self.filterByYear(class_, time_list, columns) + [chart]
+                return self.filterByYear(class_, space_list, time_list, columns) + [chart]
             elif MONTHS in query_filter:
                 chart = [BAR, LINE]
-                return self.filterByMonth(class_, time_list, columns) + [chart]
+                return self.filterByMonth(class_, space_list, time_list, columns) + [chart]
             elif DAYS in query_filter:
                 chart = [BAR, LINE]
-                return self.filterByDays(class_, time_list, columns) + [chart]
+                return self.filterByDays(class_, space_list, time_list, columns) + [chart]
             elif HOURS in query_filter:
                 chart = [BAR, LINE]
-                return self.filterByHours(class_, time_list, columns) + [chart]
+                return self.filterByHours(class_, space_list, time_list, columns) + [chart]
             elif MUNICIPALITY in query_filter:
                 chart = [BAR, PIE]
-                return [[], []] + [chart]
+                return self.filterByMunicipality(class_, space_list, time_list, columns) + [chart]
             elif LOCALITY in query_filter:
                 chart = [BAR, PIE]
-                return [[], []] + [chart]
+                return self.filterByLocality(class_, space_list, time_list, columns) + [chart]
             elif NEIGHTBORHOOD in query_filter:
                 chart = [BAR, PIE]
-                return [[], []] + [chart]
+                return self.filterByNeightborhood(class_, space_list, time_list, columns) + [chart]
             elif ZONE in query_filter:
                 chart = [BAR, PIE]
-                return self.filterByDom(class_, time_list, columns, DOMAINS[columns[ZONE]], ZONE) + [chart]
+                return self.filterByDom(class_, space_list, time_list, columns, DOMAINS[columns[ZONE]], ZONE) + [chart]
             elif AREA in query_filter:
                 chart = [BAR, PIE]
-                return self.filterByDom(class_, time_list, columns, DOMAINS[columns[AREA]], AREA) + [chart]
+                return self.filterByDom(class_, space_list, time_list, columns, DOMAINS[columns[AREA]], AREA) + [chart]
             elif SEVERITY in query_filter:
                 chart = [PIE]
-                return self.filterByDom(class_, time_list, columns, DOMAINS[columns[SEVERITY]], SEVERITY) + [chart]
+                return self.filterByDom(class_, space_list, time_list, columns, DOMAINS[columns[SEVERITY]], SEVERITY) + [chart]
             elif TYPE in query_filter:
                 chart = [DOUGHNUT]
-                return self.filterByDom(class_, time_list, columns, DOMAINS[columns[TYPE]], TYPE) + [chart]
+                return self.filterByDom(class_, space_list, time_list, columns, DOMAINS[columns[TYPE]], TYPE) + [chart]
             elif OBJ in query_filter:
                 chart = [DOUGHNUT]
-                return self.filterByDom(class_, time_list, columns, DOMAINS[columns[OBJ]], OBJ) + [chart]
+                return self.filterByDom(class_, space_list, time_list, columns, DOMAINS[columns[OBJ]], OBJ) + [chart]
             elif OBJTYP in query_filter:
                 chart = [DOUGHNUT]
-                return self.filterByDom(class_, time_list, columns, DOMAINS[columns[OBJTYP]], OBJTYP) + [chart]
+                return self.filterByDom(class_, space_list, time_list, columns, DOMAINS[columns[OBJTYP]], OBJTYP) + [chart]
             
             else:
                 return [], [], []
@@ -211,7 +287,7 @@ class TrafficCollisionCountViewSet (viewsets.ModelViewSet, EscalaFilter):
             MONTHS: "COLMONTH",
             DAYS: "COLDAY",
             HOURS: "COLHOUR",
-            NEIGHTBORHOOD: "COLNEIGH",
+            NEIGHTBORHOOD: "ID_NEIGHB",
             ZONE: "COLZONE",
             AREA: "COLAREA",
             SEVERITY: "COLSEV",
@@ -271,8 +347,9 @@ class TrafficCollisionCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         label = "Traffic Collision"
         time_list = self.timeFilter(TrafficCollision, COLUMNS[YEARS], params)
         space_list = self.spaceFilter(TrafficCollision, COLUMNS[NEIGHTBORHOOD], params)
+        print(space_list)
         
-        labels, data_list, charts = self.searchByFilter(TrafficCollision, time_list, COLUMNS, DOMAINS, params)
+        labels, data_list, charts = self.searchByFilter(TrafficCollision, space_list, time_list, COLUMNS, DOMAINS, params)
 
         dataset = {'label': label, 'data': data_list}
         response = {
@@ -302,19 +379,19 @@ class TreePlotCountViewSet (viewsets.ModelViewSet, EscalaFilter):
     queryset = TreePlot.objects.all()
     serializer_class = TreePlotSerializer
     
-    def searchByFilter (self, class_, columns, params):
+    def searchByFilter (self, class_, space_list, columns, params):
         if 'filter' in params:
             query_filter = params.get('filter')
             
             if MUNICIPALITY in query_filter:
                 chart = [BAR, PIE]
-                return [], [] + chart
+                return self.filterByMunicipality(class_, space_list, [], columns) + [chart]
             elif LOCALITY in query_filter:
                 chart = [BAR, PIE]
-                return [], [] + chart
+                return self.filterByLocality(class_, space_list, [], columns) + [chart]
             elif NEIGHTBORHOOD in query_filter:
                 chart = [BAR, PIE]
-                return [], [] + chart
+                return self.filterByNeightborhood(class_, space_list, [], columns) + [chart]
             elif AREA_RANGE in query_filter:
                 chart = [BAR, PIE]
                 return self.filterByRange(class_, columns, AREA_RANGE) + [chart]
@@ -345,7 +422,7 @@ class TreePlotCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         params = self.request.query_params
         
         COLUMNS = {
-            NEIGHTBORHOOD: "TPNEIGH",
+            NEIGHTBORHOOD: "ID_NEIGHB",
             AREA_RANGE: "TPAREA",
             DIAMETER: "TPDBH",
             HEIGHT: "TPHEIG",
@@ -358,7 +435,7 @@ class TreePlotCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         label = "Tree Plot"
         space_list = self.spaceFilter(TreePlot, COLUMNS[NEIGHTBORHOOD], params)
         
-        labels, data_list, charts = self.searchByFilter(TreePlot, COLUMNS, params)
+        labels, data_list, charts = self.searchByFilter(TreePlot, space_list, COLUMNS, params)
 
         dataset = {'label': label, 'data': data_list}
         response = {
