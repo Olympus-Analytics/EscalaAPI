@@ -65,7 +65,7 @@ class EscalaFilter:
        
     def spaceFilter (self, class_, space_col, params):
         if 'space' in params:
-            filter = ast.literal_eval(params.get('space'))
+            filter = params.get('space').split(",")
             
             space_list = list(Neightborhood.objects.filter(NAME__in=filter).values('ID_NEIGHB', 'NAME'))
             space_filtered = [neigh['ID_NEIGHB'] for neigh in space_list]
