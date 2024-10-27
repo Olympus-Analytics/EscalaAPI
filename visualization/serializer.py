@@ -114,35 +114,44 @@ class RainfallSerializer (serializers.ModelSerializer):
 # Colecciones de datos de [LandSurfaceTemperature]
 class LandSurfaceTemperatureSerializer (serializers.ModelSerializer):
     RASTER_URL = serializers.SerializerMethodField()
+    RASTER_AUX = serializers.SerializerMethodField()
     
     class Meta:
         model = LandSurfaceTemperature
         geo_field = "RASTER"
-        fields = ['YEAR', 'RASTER_URL']
+        fields = ['YEAR', 'RASTER_URL', 'RASTER_AUX']
     
     def get_RASTER_URL(self, obj):
         request = self.context.get('request')
-        return request.build_absolute_uri(static(f'LST_bar/{obj.ID_LST}.tif'))
+        return request.build_absolute_uri(static(f'LST_bar/PNG/{obj.ID_LST}.png'))
+    
+    def get_RASTER_AUX(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(static(f'LST_bar/PNG/{obj.ID_LST}.png.aux.xml'))
 
 
 # Colecciones de datos de [NDVI]
 class NDVISerializer (serializers.ModelSerializer):
     RASTER_URL = serializers.SerializerMethodField()
+    RASTER_AUX = serializers.SerializerMethodField()
     
     class Meta:
         model = NDVI
         geo_field = "RASTER"
-        fields = ['YEAR', 'RASTER_URL']
+        fields = ['YEAR', 'RASTER_URL', 'RASTER_AUX']
         
     def get_RASTER_URL(self, obj):
         request = self.context.get('request')
-        return request.build_absolute_uri(static(f'NDVI_bar/{obj.ID_NDVI}.tif'))
+        return request.build_absolute_uri(static(f'NDVI_bar/PNG/{obj.ID_NDVI}.png'))
+    
+    def get_RASTER_AUX(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(static(f'NDVI_bar/PNG/{obj.ID_NDVI}.png.aux.xml'))
 
 
 # Colecciones de datos de [LandSurfaceTemperature]
 class LSTDownloadSerializer (serializers.ModelSerializer):
     RASTER_URL = serializers.SerializerMethodField()
-    RASTER_AUX = serializers.SerializerMethodField()
     
     class Meta:
         model = LandSurfaceTemperature
@@ -156,16 +165,10 @@ class LSTDownloadSerializer (serializers.ModelSerializer):
         else:
             return request.build_absolute_uri("")
     
-    def get_RASTER_AUX(self, obj):
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(reverse("download_lst", args=[obj.ID_LST.replace(".tif", ".png.aux.xml")]))
-        else:
-            return request.build_absolute_uri("")
+    
 
 class NDVIDownloadSerializer (serializers.ModelSerializer):
     RASTER_URL = serializers.SerializerMethodField()
-    RASTER_AUX = serializers.SerializerMethodField()
     
     class Meta:
         model = NDVI
@@ -180,12 +183,7 @@ class NDVIDownloadSerializer (serializers.ModelSerializer):
         else:
             return request.build_absolute_uri("")
         
-    def get_RASTER_AUX(self, obj):
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(reverse("download_lst", args=[obj.ID_LST.replace(".tif", ".png.aux.xml")]))
-        else:
-            return request.build_absolute_uri("")
+    
         
         
 '''
