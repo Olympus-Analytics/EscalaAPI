@@ -297,6 +297,28 @@ class EscalaFilter:
         
         return [labels, list_mun.values()]
     
+    def meanByYear (self, class_, space_list, time_list, columns):
+        list_years = self.filterByYear(class_, space_list, time_list, columns)
+            
+        for year in time_list:
+            if (year%4 == 0):
+                list_years[year] = list_years[year]/366
+            else:
+                list_years[year] = list_years[year]/365
+            
+        return list_years
+            
+    def meanByMonth (self, class_, space_list, time_list, columns):
+        days_for_month = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        months_per_year = [i for i in range(1, 13)]
+        
+        list_months = self.filterByMonth(class_, space_list, time_list, columns)
+        
+        list_months = {f'{year}/{month}': list_months[f'{year}/{month}']/days_for_month[i]  for year in time_list
+                                                                                            for i, month in enumerate(months_per_year)}
+        
+        return list_months
+    
 # Colección de ViewSets para [TrafficCollision] 
 class TrafficCollisionViewSet (viewsets.ModelViewSet):
     queryset = TrafficCollision.objects.all()
