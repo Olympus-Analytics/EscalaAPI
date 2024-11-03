@@ -5,7 +5,6 @@ from .models import TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, Urb
 
 from rest_framework import viewsets
 import re
-import ast
 import numpy as np
 
 
@@ -77,7 +76,7 @@ class EscalaFilter:
             
             return space_filtered
 
-    def filterByYear (self, class_, space_list, time_list, columns):
+    def filterByYear (self, class_, space_list, time_list, columns, extrapolate=False):
         list_years = {year: 0 for year in time_list}
                 
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
@@ -86,7 +85,7 @@ class EscalaFilter:
             
         return [list_years.keys(), list_years.values()]
     
-    def filterByMonth (self, class_, space_list, time_list, columns):
+    def filterByMonth (self, class_, space_list, time_list, columns, extrapolate=False):
         months_per_year = [i for i in range(1, 13)]
         list_months = {f'{year}/{month}': 0 for year in time_list
                                             for month in months_per_year}
@@ -97,7 +96,7 @@ class EscalaFilter:
                 
         return [list_months.keys(), list_months.values()]
 
-    def filterByDays (self, class_, space_list, time_list, columns):
+    def filterByDays (self, class_, space_list, time_list, columns, extrapolate=False):
         days_for_month = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
         months_per_year = [i for i in range(1, 13)]
         list_days = {f'{year}/{month}/{day}': 0 for year in time_list
@@ -110,7 +109,7 @@ class EscalaFilter:
                 
         return [list_days.keys(), list_days.values()]
     
-    def filterByHours (self, class_, space_list, time_list, columns):
+    def filterByHours (self, class_, space_list, time_list, columns, extrapolate=False):
         list_hours = {hour: 0 for hour in list(range(0, 24))}
                 
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[HOURS]).order_by(columns[HOURS]).annotate(count=Count(columns[HOURS])))
@@ -129,7 +128,7 @@ class EscalaFilter:
             
         return [dom_list.values(), list_values.values()]
     
-    def filterByRange (self, class_, columns, col):
+    def filterByRange (self, class_, columns, col, extrapolate=False):
         max = class_.objects.aggregate(Max(columns[col]))[f"{columns[col]}__max"]
         min = class_.objects.aggregate(Min(columns[col]))[f"{columns[col]}__min"]
         range_list = np.linspace(max, min, 10)[::-1]
@@ -141,161 +140,289 @@ class EscalaFilter:
             
         return [list_values.keys(), list_values.values()]
 
-    def filterByNeightborhood (self, class_, space_list, time_list, columns):
-        list_neigh = {neigh: 0 for neigh in space_list}
-        labels = [neigh['NAME'].replace("_", " ") for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=list_neigh.keys()).values("NAME")) if neigh['NAME'] != 'NA']
+    def filterByNeightborhood (self, class_, space_list, time_list, columns, extrapolate=False):
+        neigh_values = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME", "AREA"))     
         
-        if class_ is TrafficCollision:        
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-        else:
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-        for value in data:
-            list_neigh[value[columns[NEIGHTBORHOOD]]] = value['count']
-        
-        # Aggregate all 'NA' neighborhoods on 'Others'
-        others_list = ['NBAR026', 'NBAR028', 'NBAR082', 'NBAR025', 'NBAR029', 'NBAR057', 'NBAR067']
-        NA_neigh = [neigh for neigh in list_neigh.keys() if neigh in others_list]
-        
-        if (len(NA_neigh) > 0):
-            labels.append('OTHERS')
-            list_neigh['OTHERS'] = 0
-            
-            for neigh in NA_neigh:
-                list_neigh['OTHERS'] += list_neigh[neigh]
-                list_neigh.pop(neigh)
-        
-        return [labels, list_neigh.values()]
+        list_neigh = dict()
+        for neigh in neigh_values:
+            if neigh['NAME'] != 'NA':
+                list_neigh[neigh['ID_NEIGHB']] = {
+                    'count': 0,
+                    'name': neigh['NAME'].replace("_", " "),
+                    'area': neigh['AREA'],
+                    'extrapolation': 0
+                }
 
-    def filterByLocality (self, class_, space_list, time_list, columns):
-        loc_by_neigh = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY"))}
-        list_loc = {loc: 0 for loc in list(set([loc for loc in loc_by_neigh.values()]))}
-        print(list_loc)
-        
-        list_loc = {loc: 0 for loc in list(Neightborhood.objects.filter(ID_NEIGHB__in=space_list).values_list('LOCALITY', flat=True).distinct())}
-        labels = [loc['NAME']for loc in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=list_loc.keys()).values("NAME"))]
-        
-        if class_ is TrafficCollision:
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-        else: 
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-            
-        for value in data:
-            neigh = value[columns[NEIGHTBORHOOD]]
-            locality = loc_by_neigh[neigh]
-            list_loc[locality] += value['count']
-        
-        return [labels, list_loc.values()]
-    
-    def filterByMunicipality (self, class_, space_list, time_list, columns):
-        loc_by_neigh = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY"))}
-        loc_by_mun = {neigh["ID_LOCALITY"]: neigh["MUNICIPALITY"] for neigh in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_by_neigh.values()).values("ID_LOCALITY", "MUNICIPALITY"))}
-        mun_by_neigh = {neigh: loc_by_mun[loc_by_neigh[neigh]] for neigh in loc_by_neigh.keys()}
-        
-        list_mun = {mun: 0 for mun in list(set([mun for mun in mun_by_neigh.values()]))}
-        print("MUN")
-        print(list_mun)
-        
-        labels = [loc['NAME'] for loc in list(Municipality.objects.all().filter(ID_MUN__in=list_mun.keys()).values("NAME"))]
-        
-        if class_ is TrafficCollision:
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-        else:
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-        for value in data:
-            neigh = value[columns[NEIGHTBORHOOD]]
-            municipality = mun_by_neigh[neigh]
-            list_mun[municipality] += value['count']
-        
-        return [labels, list_mun.values()]
-    
-    def filterByNeighborhoodArea (self, class_, space_list, time_list, columns):
-        list_neigh = {neigh: 0 for neigh in space_list}
-        
-        neigh_data = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=list_neigh.keys()).values("NAME", "ID_NEIGHB", "AREA"))
-        
-        print([neigh['NAME'] for neigh in neigh_data if neigh['NAME'] != 'NA'])
-        
-        neigh_info = {neigh['ID_NEIGHB']: neigh['AREA'] for neigh in neigh_data}
-        labels = [neigh['NAME'].replace("_", " ") for neigh in neigh_data if neigh['NAME'] != 'NA']
-        
-        print(neigh_info)
+        list_neigh['OTHERS'] = {
+            'count': 0,
+            'name': 'OTHERS',
+            'area': sum(neigh['AREA'] for neigh in neigh_values if neigh['NAME'] == 'NA'),
+            'extrapolation': 0
+        }
         
         if class_ is TrafficCollision:        
             data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
         else:
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD]), area=Sum('TPAREA'), sum=Sum('TPABUND')))
+        
         for value in data:
-            list_neigh[value[columns[NEIGHTBORHOOD]]] = value['count'] / neigh_info[value[columns[NEIGHTBORHOOD]]]
+            try:
+                list_neigh[value[columns[NEIGHTBORHOOD]]]['count'] = value['count']
+                
+                if extrapolate:
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['extrapolation'] = int((list_neigh[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
+            except:
+                list_neigh['OTHERS']['count'] += value['count']
+                
+                if extrapolate:
+                    list_neigh['OTHERS']['extrapolation'] = int((list_neigh['OTHERS']['area'] * value['sum']) /(value['area'] * 0.0001))
         
-        # Aggregate all 'NA' neighborhoods on 'Others'
-        others_list = ['NBAR026', 'NBAR028', 'NBAR082', 'NBAR025', 'NBAR029', 'NBAR057', 'NBAR067']
-        NA_neigh = [neigh for neigh in list_neigh.keys() if neigh in others_list]
         
-        if (len(NA_neigh) > 0):
-            labels.append('OTHERS')
-            list_neigh['OTHERS'] = 0
-            others_area = 0
-            
-            for neigh in NA_neigh:
-                others_area += neigh_info[neigh]
-                list_neigh['OTHERS'] += list_neigh[neigh]
-                list_neigh.pop(neigh)
-            list_neigh['OTHERS'] = list_neigh['OTHERS'] / others_area
-            
+        neigh_data = dict()                   
         for neigh in list_neigh.keys():
-            list_neigh[neigh] = round(list_neigh[neigh], 3)
+            if list_neigh[neigh]['count'] > 0:
+                try:
+                    if extrapolate:
+                        neigh_data[list_neigh[neigh]['name']] += list_neigh[neigh]['extrapolation']
+                    else:
+                        neigh_data[list_neigh[neigh]['name']] += list_neigh[neigh]['count']
+                except:
+                    if extrapolate:
+                        neigh_data[list_neigh[neigh]['name']] = list_neigh[neigh]['extrapolation']
+                    else:
+                        neigh_data[list_neigh[neigh]['name']] = list_neigh[neigh]['count']
         
-        return [labels, list_neigh.values()]
-    
-    def filterByLocalityArea (self, class_, space_list, time_list, columns):
-        loc_by_neigh = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY"))}
-        list_loc = {loc: 0 for loc in list(set([loc for loc in loc_by_neigh.values()]))}
+        neigh_data = dict(sorted(neigh_data.items(), key=lambda item: item[1], reverse=True))
+        return [neigh_data.keys(), neigh_data.values()]
+
+    def filterByLocality (self, class_, space_list, time_list, columns, extrapolate=False):
+        list_neigh = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY", "AREA"))
+        loc_ids = set([neigh['LOCALITY'] for neigh in list_neigh])
+        loc_names = {loc["ID_LOCALITY"]: loc['NAME'] for loc in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_ids).values("ID_LOCALITY", "NAME"))}
         
-        list_loc = {loc: 0 for loc in list(set([neigh for neigh in loc_by_neigh.values()]))}
-        loc_data = list(Locality_bar.objects.all().filter(ID_LOCALITY__in=list_loc.keys()).values("ID_LOCALITY", "AREA", "NAME"))
-        
-        locality_info = {loc['ID_LOCALITY']: loc['AREA'] for loc in loc_data}
-        labels = [loc['NAME']for loc in loc_data]
-        
+        list_loc = dict()
+        for neigh in list_neigh:
+            list_loc[neigh["ID_NEIGHB"]] = {
+                'count': 0,
+                'locality': loc_names[neigh["LOCALITY"]],
+                'area': neigh["AREA"],
+                'extrapolation': 0
+            }
+            
         if class_ is TrafficCollision:
             data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
         else: 
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-        
-        for value in data:
-            neigh = value[columns[NEIGHTBORHOOD]]
-            locality = loc_by_neigh[neigh]
-            list_loc[locality] += value['count'] / locality_info[locality]
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD]), area=Sum('TPAREA'), sum=Sum('TPABUND')))
             
-        for loc in list_loc.keys():
-            list_loc[loc] = round(list_loc[loc], 3)
+        for value in data:
+            list_loc[value[columns[NEIGHTBORHOOD]]]['count'] += value['count']
+                
+            if extrapolate:
+                list_loc[value[columns[NEIGHTBORHOOD]]]['extrapolation'] += int((list_loc[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
+
+        loc_data = dict()  
+        for neigh in list_loc.keys():
+            if list_loc[neigh]['count'] > 0:
+                try:
+                    if extrapolate:
+                        loc_data[list_loc[neigh]['locality']] += list_loc[neigh]['extrapolation']
+                    else:
+                        loc_data[list_loc[neigh]['locality']] += list_loc[neigh]['count']
+                except:
+                    if extrapolate:
+                        loc_data[list_loc[neigh]['locality']] = list_loc[neigh]['extrapolation']
+                    else:
+                        loc_data[list_loc[neigh]['locality']] = list_loc[neigh]['count']
+
+        loc_data = dict(sorted(loc_data.items(), key=lambda item: item[1], reverse=True))
+        return [loc_data.keys(), loc_data.values()]
+  
+    def filterByMunicipality (self, class_, space_list, time_list, columns, extrapolate=False):
+        list_neigh = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY", "AREA"))
+        neigh_by_loc = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list_neigh}
+        loc_by_mun = {neigh["ID_LOCALITY"]: neigh["MUNICIPALITY"] for neigh in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=set(neigh_by_loc.values())).values("ID_LOCALITY", "MUNICIPALITY"))}
+        mun_by_neigh = {neigh: loc_by_mun[neigh_by_loc[neigh]] for neigh in neigh_by_loc.keys()}
         
-        return [labels, list_loc.values()]
-    
-    def filterByMunicipalityArea (self, class_, space_list, time_list, columns):
-        loc_by_neigh = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY"))}
-        loc_by_mun = {neigh["ID_LOCALITY"]: neigh["MUNICIPALITY"] for neigh in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_by_neigh.values()).values("ID_LOCALITY", "MUNICIPALITY"))}
-        mun_by_neigh = {neigh: loc_by_mun[loc_by_neigh[neigh]] for neigh in loc_by_neigh.keys()}
-        
-        list_mun = {mun: 0 for mun in list(set([mun for mun in mun_by_neigh.values()]))}
-        mun_data = list(Municipality.objects.all().filter(ID_MUN__in=list_mun.keys()).values("ID_MUN", "AREA", "NAME"))
-        
-        mun_info = {loc['ID_MUN']: loc['AREA'] for loc in mun_data}
-        labels = [loc['NAME'] for loc in mun_data]
-        
+        list_mun = dict()
+        for neigh in list_neigh:
+            list_mun[neigh["ID_NEIGHB"]] = {
+                'count': 0,
+                'municipality': mun_by_neigh[neigh["ID_NEIGHB"]],
+                'area': neigh["AREA"],
+                'extrapolation': 0
+            }
+            
         if class_ is TrafficCollision:
             data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-        else:
-            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
-        for value in data:
-            neigh = value[columns[NEIGHTBORHOOD]]
-            municipality = mun_by_neigh[neigh]
-            list_mun[municipality] += value['count'] / mun_info[municipality]
+        else: 
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD]), area=Sum('TPAREA'), sum=Sum('TPABUND')))
             
-        for mun in list_mun.keys():
-            list_mun[mun] = round(list_mun[mun], 3)
+        for value in data:
+            list_mun[value[columns[NEIGHTBORHOOD]]]['count'] += value['count']
+                
+            if extrapolate:
+                list_mun[value[columns[NEIGHTBORHOOD]]]['extrapolation'] += int((list_mun[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
+
+        mun_data = dict()  
+        for neigh in list_mun.keys():
+            if list_mun[neigh]['count'] > 0:
+                try:
+                    if extrapolate:
+                        mun_data[list_mun[neigh]['municipality']] += list_mun[neigh]['extrapolation']
+                    else:
+                        mun_data[list_mun[neigh]['municipality']] += list_mun[neigh]['count']
+                except:
+                    if extrapolate:
+                        mun_data[list_mun[neigh]['municipality']] = list_mun[neigh]['extrapolation']
+                    else:
+                        mun_data[list_mun[neigh]['municipality']] = list_mun[neigh]['count']
+
+        return [mun_data.keys(), mun_data.values()]
+    
+    def filterByNeighborhoodArea (self, class_, space_list, time_list, columns, extrapolate=False):
+        neigh_values = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME", "AREA"))     
         
-        return [labels, list_mun.values()]
+        list_neigh = dict()
+        for neigh in neigh_values:
+            if neigh['NAME'] != 'NA':
+                list_neigh[neigh['ID_NEIGHB']] = {
+                    'count': 0,
+                    'name': neigh['NAME'].replace("_", " "),
+                    'area': neigh['AREA'],
+                    'extrapolation': 0
+                }
+
+        list_neigh['OTHERS'] = {
+            'count': 0,
+            'name': 'OTHERS',
+            'area': sum(neigh['AREA'] for neigh in neigh_values if neigh['NAME'] == 'NA'),
+            'extrapolation': 0
+        }
+        
+        if class_ is TrafficCollision:        
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD]), area=Sum('TPAREA'), sum=Sum('TPABUND')))
+        
+        for value in data:
+            try:
+                list_neigh[value[columns[NEIGHTBORHOOD]]]['count'] = value['count']/list_neigh[value[columns[NEIGHTBORHOOD]]]['area']
+                
+                if extrapolate:
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['extrapolation'] = (int((list_neigh[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001)))/list_neigh[value[columns[NEIGHTBORHOOD]]]['area']
+            except:
+                list_neigh['OTHERS']['count'] += value['count']/list_neigh['OTHERS']['area']
+                
+                if extrapolate:
+                    list_neigh['OTHERS']['extrapolation'] = (int((list_neigh['OTHERS']['area'] * value['sum']) /(value['area'] * 0.0001)))/list_neigh['OTHERS']['area']
+          
+        neigh_data = dict()                   
+        for neigh in list_neigh.keys():
+            if list_neigh[neigh]['count'] > 0:
+                try:
+                    if extrapolate:
+                        neigh_data[list_neigh[neigh]['name']] += list_neigh[neigh]['extrapolation']
+                    else:
+                        neigh_data[list_neigh[neigh]['name']] += list_neigh[neigh]['count']
+                except:
+                    if extrapolate:
+                        neigh_data[list_neigh[neigh]['name']] = list_neigh[neigh]['extrapolation']
+                    else:
+                        neigh_data[list_neigh[neigh]['name']] = list_neigh[neigh]['count']
+
+        
+        neigh_data = dict(sorted(neigh_data.items(), key=lambda item: item[1], reverse=True))
+        return [neigh_data.keys(), neigh_data.values()]
+    
+    def filterByLocalityArea (self, class_, space_list, time_list, columns, extrapolate=False):
+        list_neigh = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY", "AREA"))
+        loc_ids = set([neigh['LOCALITY'] for neigh in list_neigh])
+        
+        list_locs = list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_ids).values("ID_LOCALITY", "NAME", "AREA"))
+        loc_names = {loc["ID_LOCALITY"]: loc['NAME'] for loc in list_locs}
+        loc_area = {loc["NAME"]: loc["AREA"] for loc in list_locs}
+        
+        list_loc = dict()
+        for neigh in list_neigh:
+            list_loc[neigh["ID_NEIGHB"]] = {
+                'count': 0,
+                'locality': loc_names[neigh["LOCALITY"]],
+                'area': neigh["AREA"],
+                'extrapolation': 0
+            }
+            
+        if class_ is TrafficCollision:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else: 
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD]), area=Sum('TPAREA'), sum=Sum('TPABUND')))
+            
+        for value in data:
+            list_loc[value[columns[NEIGHTBORHOOD]]]['count'] += value['count']
+                
+            if extrapolate:
+                list_loc[value[columns[NEIGHTBORHOOD]]]['extrapolation'] += int((list_loc[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
+
+        loc_data = dict()
+        for neigh in list_loc.keys():
+            if list_loc[neigh]['count'] > 0:
+                try:
+                    if extrapolate:
+                        loc_data[list_loc[neigh]['locality']] += list_loc[neigh]['extrapolation'] / loc_area[list_loc[neigh]['locality']]
+                    else:
+                        loc_data[list_loc[neigh]['locality']] += list_loc[neigh]['count'] / loc_area[list_loc[neigh]['locality']]
+                except:
+                    if extrapolate:
+                        loc_data[list_loc[neigh]['locality']] = list_loc[neigh]['extrapolation'] / loc_area[list_loc[neigh]['locality']]
+                    else:
+                        loc_data[list_loc[neigh]['locality']] = list_loc[neigh]['count'] / loc_area[list_loc[neigh]['locality']]
+
+        loc_data = dict(sorted(loc_data.items(), key=lambda item: item[1], reverse=True))
+        return [loc_data.keys(), loc_data.values()]
+    
+    def filterByMunicipalityArea (self, class_, space_list, time_list, columns, extrapolate=False):
+        list_neigh = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY", "AREA"))
+        neigh_by_loc = {neigh["ID_NEIGHB"]: neigh["LOCALITY"] for neigh in list_neigh}
+        loc_by_mun = {neigh["ID_LOCALITY"]: neigh["MUNICIPALITY"] for neigh in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=set(neigh_by_loc.values())).values("ID_LOCALITY", "MUNICIPALITY"))}
+        mun_by_neigh = {neigh: loc_by_mun[neigh_by_loc[neigh]] for neigh in neigh_by_loc.keys()}
+        
+        mun_area = {mun["ID_MUN"]: mun["AREA"] for mun in list(Municipality.objects.all().values("ID_MUN", "AREA"))}
+        
+        list_mun = dict()
+        for neigh in list_neigh:
+            list_mun[neigh["ID_NEIGHB"]] = {
+                'count': 0,
+                'municipality': mun_by_neigh[neigh["ID_NEIGHB"]],
+                'area': neigh["AREA"],
+                'extrapolation': 0
+            }
+            
+        if class_ is TrafficCollision:
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD])))
+        else: 
+            data = list(class_.objects.filter(ID_NEIGHB__in=space_list).order_by().values(columns[NEIGHTBORHOOD]).annotate(count=Count(columns[NEIGHTBORHOOD]), area=Sum('TPAREA'), sum=Sum('TPABUND')))
+            
+        for value in data:
+            list_mun[value[columns[NEIGHTBORHOOD]]]['count'] += value['count']
+                
+            if extrapolate:
+                list_mun[value[columns[NEIGHTBORHOOD]]]['extrapolation'] += int((list_mun[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
+
+        mun_data = dict()  
+        for neigh in list_mun.keys():
+            if list_mun[neigh]['count'] > 0:
+                try:
+                    if extrapolate:
+                        mun_data[list_mun[neigh]['municipality']] += list_mun[neigh]['extrapolation'] / mun_area[list_mun[neigh]['municipality']]
+                    else:
+                        mun_data[list_mun[neigh]['municipality']] += list_mun[neigh]['count'] / mun_area[list_mun[neigh]['municipality']]
+                except:
+                    if extrapolate:
+                        mun_data[list_mun[neigh]['municipality']] = list_mun[neigh]['extrapolation'] / mun_area[list_mun[neigh]['municipality']]
+                    else:
+                        mun_data[list_mun[neigh]['municipality']] = list_mun[neigh]['count'] / mun_area[list_mun[neigh]['municipality']]
+
+        mun_data = dict(sorted(mun_data.items(), key=lambda item: item[1], reverse=True))
+        return [mun_data.keys(), mun_data.values()]
     
     def meanByYear (self, class_, space_list, time_list, columns):
         list_years = self.filterByYear(class_, space_list, time_list, columns)
@@ -551,13 +678,13 @@ class TreePlotCountViewSet (viewsets.ModelViewSet, EscalaFilter):
             
             if MUNICIPALITY in query_filter:
                 chart = [BAR, PIE]
-                return self.filterByMunicipality(class_, space_list, [], columns) + [chart]
+                return self.filterByMunicipality(class_, space_list, [], columns, extrapolate=True) + [chart]
             elif LOCALITY in query_filter:
                 chart = [BAR, PIE]
-                return self.filterByLocality(class_, space_list, [], columns) + [chart]
+                return self.filterByLocality(class_, space_list, [], columns, extrapolate=True) + [chart]
             elif NEIGHTBORHOOD in query_filter:
                 chart = [BAR, PIE]
-                return self.filterByNeightborhood(class_, space_list, [], columns) + [chart]
+                return self.filterByNeightborhood(class_, space_list, [], columns, extrapolate=True) + [chart]
             elif AREA_RANGE in query_filter:
                 chart = [BAR, PIE]
                 return self.filterByRange(class_, columns, AREA_RANGE) + [chart]
@@ -629,13 +756,13 @@ class TreePlotAreaCountViewSet (viewsets.ModelViewSet, EscalaFilter):
             
             if MUNICIPALITY in query_filter:
                 chart = [BAR]
-                return self.filterByMunicipalityArea(class_, space_list, [], columns) + [chart]
+                return self.filterByMunicipalityArea(class_, space_list, [], columns, extrapolate=True) + [chart]
             elif LOCALITY in query_filter:
                 chart = [BAR]
-                return self.filterByLocalityArea(class_, space_list, [], columns) + [chart]
+                return self.filterByLocalityArea(class_, space_list, [], columns, extrapolate=True) + [chart]
             elif NEIGHTBORHOOD in query_filter:
                 chart = [BAR]
-                return self.filterByNeighborhoodArea(class_, space_list, [], columns) + [chart]  
+                return self.filterByNeighborhoodArea(class_, space_list, [], columns, extrapolate=True) + [chart]  
             else:
                 return [], [], []
         else:
@@ -710,7 +837,6 @@ class LandSurfaceTemperatureViewSet (viewsets.ModelViewSet):
     def list (self, request):
         params = self.request.query_params
         
-        print(params)
         if 'YY' in params:
             queryset = LandSurfaceTemperature.objects.filter(YEAR=params.get("YY"))
         elif 'ID' in params:
@@ -728,7 +854,6 @@ class NDVIViewSet (viewsets.ModelViewSet):
     def list (self, request):
         params = self.request.query_params
         
-        print(params)
         if 'YY' in params:
             queryset = NDVI.objects.filter(YEAR=params.get("YY"))
         elif 'ID' in params:

@@ -12,6 +12,8 @@ _____________________________________________________________________________
 _____________________________________________________________________________
     - /traffic_collisions/
     - /traffic_collisions_point/
+        This endpoint will return a paginated result of 10 points of TrafficCollisions,
+        they will be on "features" list, and their coordinates are on "geometry" -> "coordinates"
     - /traffic_collisions_count/
         QueryParams:
         - filter: one of the next list
@@ -45,6 +47,8 @@ _____________________________________________________________________________
 _____________________________________________________________________________
     - /tree_plot/
     - /tree_plot_point/
+        This endpoint will return a paginated result of 10 points of TreePlots,
+        they will be on "features" list, and their coordinates are on "geometry" -> "coordinates"
     - /tree_plot_count/
         QueryParams:
         - filter: one of the next list
