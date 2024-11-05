@@ -263,21 +263,15 @@ class EscalaFilter:
             if extrapolate:
                 list_mun[value[columns[NEIGHTBORHOOD]]]['extrapolation'] += int((list_mun[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
 
-        mun_data = dict()  
+        data = 0
         for neigh in list_mun.keys():
             if list_mun[neigh]['count'] > 0:
-                try:
-                    if extrapolate:
-                        mun_data[list_mun[neigh]['municipality']] += list_mun[neigh]['extrapolation']
-                    else:
-                        mun_data[list_mun[neigh]['municipality']] += list_mun[neigh]['count']
-                except:
-                    if extrapolate:
-                        mun_data[list_mun[neigh]['municipality']] = list_mun[neigh]['extrapolation']
-                    else:
-                        mun_data[list_mun[neigh]['municipality']] = list_mun[neigh]['count']
+                if extrapolate:
+                    data += list_mun[neigh]['extrapolation']
+                else:
+                    data += list_mun[neigh]['count']
 
-        return [mun_data.keys(), mun_data.values()]
+        return ["Barranquilla", data]
     
     def filterByNeighborhoodArea (self, class_, space_list, time_list, columns, extrapolate=False):
         neigh_values = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME", "AREA"))     
@@ -407,22 +401,15 @@ class EscalaFilter:
             if extrapolate:
                 list_mun[value[columns[NEIGHTBORHOOD]]]['extrapolation'] += int((list_mun[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
 
-        mun_data = dict()  
+        data = 0
         for neigh in list_mun.keys():
             if list_mun[neigh]['count'] > 0:
-                try:
-                    if extrapolate:
-                        mun_data[list_mun[neigh]['municipality']] += list_mun[neigh]['extrapolation'] / mun_area[list_mun[neigh]['municipality']]
-                    else:
-                        mun_data[list_mun[neigh]['municipality']] += list_mun[neigh]['count'] / mun_area[list_mun[neigh]['municipality']]
-                except:
-                    if extrapolate:
-                        mun_data[list_mun[neigh]['municipality']] = list_mun[neigh]['extrapolation'] / mun_area[list_mun[neigh]['municipality']]
-                    else:
-                        mun_data[list_mun[neigh]['municipality']] = list_mun[neigh]['count'] / mun_area[list_mun[neigh]['municipality']]
+                if extrapolate:
+                    data += list_mun[neigh]['extrapolation'] / mun_area[list_mun[neigh]['municipality']]
+                else:
+                    data += list_mun[neigh]['count'] / mun_area[list_mun[neigh]['municipality']]
 
-        mun_data = dict(sorted(mun_data.items(), key=lambda item: item[1], reverse=True))
-        return [mun_data.keys(), mun_data.values()]
+        return ["Barranquilla", data]
     
     def meanByYear (self, class_, space_list, time_list, columns):
         list_years = self.filterByYear(class_, space_list, time_list, columns)
