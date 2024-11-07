@@ -149,6 +149,24 @@ class NDVISerializer (serializers.ModelSerializer):
         return request.build_absolute_uri(static(f'NDVI_bar/PNG/{obj.ID_NDVI}.png.aux.xml'))
 
 
+class NDVITestSerializer (serializers.ModelSerializer):
+    RASTER_URL = serializers.SerializerMethodField()
+    RASTER_AUX = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = NDVI
+        geo_field = "RASTER"
+        fields = ['YEAR', 'RASTER_URL', 'RASTER_AUX']
+        
+    def get_RASTER_URL(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(static(f'NDVI_bar/{obj.ID_NDVI}.tif'))
+    
+    def get_RASTER_AUX(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(static(f'NDVI_bar/PNG/{obj.ID_NDVI}.png.aux.xml'))
+                
+
 # Colecciones de datos de [LandSurfaceTemperature]
 class LSTDownloadSerializer (serializers.ModelSerializer):
     RASTER_URL = serializers.SerializerMethodField()
