@@ -864,5 +864,5 @@ class NDVITestViewSet (viewsets.ModelViewSet):
         else:
             queryset = NDVI.objects.all()
         
-        serializer = NDVISerializer(queryset, many=True, context={'request': request})
+        serializer = NDVITestSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data[0])
