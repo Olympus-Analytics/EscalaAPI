@@ -1,6 +1,6 @@
 from rest_framework import routers
 
-from .viewsets import NeightborhoodViewSet, Locality_barViewSet, UPZViewSet, ZATViewSet, UrbanPerimeterViewSet, MunicipalityViewSet, TreePlotViewSet, AirTemperatureViewSet, RainfallViewSet, LandSurfaceTemperatureViewSet, NDVIViewSet
+from .viewsets import NeightborhoodViewSet, Locality_barViewSet, UPZViewSet, ZATViewSet, UrbanPerimeterViewSet, MunicipalityViewSet, TreePlotViewSet, AirTemperatureViewSet, RainfallViewSet, LandSurfaceTemperatureViewSet, NDVIViewSet, NDVITestViewSet
 
 from .viewsets import TrafficCollisionViewSet, TrafficCollisionPointViewSet, TrafficCollisionCountViewSet, TrafficCollisionAreaCountViewSet, TrafficCollisionTSCountViewSet
 from .viewsets import TreePlotViewSet, TreePlotPointViewSet, TreePlotCountViewSet, TreePlotAreaCountViewSet
@@ -37,3 +37,4 @@ router.register("air_temperature", AirTemperatureViewSet, basename='air_temperat
 router.register("rainfall", RainfallViewSet, basename='rainfall_data')
 router.register("landsurface_temperature", LandSurfaceTemperatureViewSet, basename='landsurface_temperature_data')
 router.register("ndvi", NDVIViewSet, basename='ndvi_data')
+router.register("ndvi_test", NDVITestViewSet, basename='ndvi_test_data')

@@ -11,7 +11,7 @@ import numpy as np
 from .serializer import TrafficCollisionSerializer, TrafficCollisionPointSerializer
 from .serializer import TreePlotSerializer, TreePlotPointSerializer
 
-from .serializer import AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer
+from .serializer import AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer, NDVITestSerializer
 
 from .serializer import TrafficCollisionSerializer, NeightborhoodSerializer, Locality_barSerializer, UPZSerializer, ZATSerializer, UrbanPerimeterSerializer, MunicipalitySerializer, TreePlotSerializer, AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer
 
@@ -1118,4 +1118,19 @@ class NDVIViewSet (viewsets.ModelViewSet):
         
         serializer = NDVISerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data[0])
+
+class NDVITestViewSet (viewsets.ModelViewSet):
+    serializer_class = NDVITestSerializer
+    
+    def list (self, request):
+        params = self.request.query_params
         
+        if 'YY' in params:
+            queryset = NDVI.objects.filter(YEAR=params.get("YY"))
+        elif 'ID' in params:
+            queryset = NDVI.objects.filter(ID_NDVI=params.get("ID"))
+        else:
+            queryset = NDVI.objects.all()
+        
+        serializer = NDVITestSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data[0])
