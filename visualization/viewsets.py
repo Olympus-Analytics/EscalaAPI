@@ -617,10 +617,10 @@ class TrafficCollisionCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         if 'filter' in params:
             query_filter = params.get('filter')
             
-            if MUNBYYEAR in query_filter:
+            if YEARS in query_filter:
                 chart = [BAR, LINE]
                 return self.filterByYear(class_, space_list, time_list, columns) + [chart]
-            elif MUNBYMONTH in query_filter:
+            elif MONTHS in query_filter:
                 chart = [BAR, LINE]
                 return self.filterByMonth(class_, space_list, time_list, columns) + [chart]
             elif DAYS in query_filter:
@@ -754,7 +754,13 @@ class TrafficCollisionTSCountViewSet (viewsets.ModelViewSet, EscalaFilter):
     def searchByFilter (self, class_, space_list, time_list, columns, DOMAINS, params):
         if 'filter' in params:
             query_filter = params.get('filter')
-            if NEIGHBYYEAR in query_filter:
+            if MUNBYYEAR in query_filter:
+                chart = [BAR, LINE]
+                return self.filterByYear(class_, space_list, time_list, columns) + [chart]
+            elif MUNBYMONTH in query_filter:
+                chart = [BAR, LINE]
+                return self.filterByMonth(class_, space_list, time_list, columns) + [chart]
+            elif NEIGHBYYEAR in query_filter:
                 chart = [LINE]
                 return self.filterByNeighYear(class_, space_list, time_list, columns) + [chart]  
             elif NEIGHBYMONTH in query_filter:
@@ -1113,7 +1119,7 @@ class NDVIViewSet (viewsets.ModelViewSet):
         
         if 'YY' in params:
             queryset = NDVI.objects.filter(YEAR=params.get("YY"))
-            print(queryset.values("ID_NDVI", "RASTER"))
+            print(list(queryset.values("ID_NDVI", "RASTER"))[0]['RASTER'])
         elif 'ID' in params:
             queryset = NDVI.objects.filter(ID_NDVI=params.get("ID"))
         else:
