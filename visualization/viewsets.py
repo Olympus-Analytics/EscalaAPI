@@ -33,10 +33,12 @@ LOCALITY = "locality"
 NEIGHTBORHOOD = "neighborhood"
 
 # Time vs Spatial Filters List
-LOCBYYEAR = "locality_year"
-LOCBYMONTH = "locality_month"
-NEIGHBYYEAR = "neighborhood_year"
-NEIGHBYMONTH = "neighborhood_month"
+MUNBYYEAR = f"{MUNICIPALITY}_{YEARS}"
+MUNBYMONTH = f"{MUNICIPALITY}_{MONTHS}"
+LOCBYYEAR = f"{LOCALITY}_{YEARS}"
+LOCBYMONTH = f"{LOCALITY}_{MONTHS}"
+NEIGHBYYEAR = f"{NEIGHTBORHOOD}_{YEARS}"
+NEIGHBYMONTH = f"{NEIGHTBORHOOD}_{MONTHS}"
 
 # Filters [TrafficCollision] Only
 ZONE = "zone"
@@ -615,10 +617,10 @@ class TrafficCollisionCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         if 'filter' in params:
             query_filter = params.get('filter')
             
-            if YEARS in query_filter:
+            if MUNBYYEAR in query_filter:
                 chart = [BAR, LINE]
                 return self.filterByYear(class_, space_list, time_list, columns) + [chart]
-            elif MONTHS in query_filter:
+            elif MUNBYMONTH in query_filter:
                 chart = [BAR, LINE]
                 return self.filterByMonth(class_, space_list, time_list, columns) + [chart]
             elif DAYS in query_filter:
@@ -1111,11 +1113,13 @@ class NDVIViewSet (viewsets.ModelViewSet):
         
         if 'YY' in params:
             queryset = NDVI.objects.filter(YEAR=params.get("YY"))
+            print(queryset.values("ID_NDVI", "RASTER"))
         elif 'ID' in params:
             queryset = NDVI.objects.filter(ID_NDVI=params.get("ID"))
         else:
             queryset = NDVI.objects.all()
         
+        #print(NDVI.objects.all().values("ID_NDVI", "RASTER"))
         serializer = NDVISerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data[0])
 
