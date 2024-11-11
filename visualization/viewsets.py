@@ -1,18 +1,16 @@
 from rest_framework.response import Response
 from django.db.models import Sum, Count, Max, Min
 
-from .models import TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, AirTemperature, Rainfall, LandSurfaceTemperature, NDVI
-
 from rest_framework import viewsets
-import re
+import re, math
 import numpy as np
 
+from django.contrib.gis.gdal.raster.source import GDALRaster
 
+from .models import TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, AirTemperature, Rainfall, LandSurfaceTemperature, NDVI
 from .serializer import TrafficCollisionSerializer, TrafficCollisionPointSerializer
 from .serializer import TreePlotSerializer, TreePlotPointSerializer
-
 from .serializer import AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer, NDVITestSerializer
-
 from .serializer import TrafficCollisionSerializer, NeightborhoodSerializer, Locality_barSerializer, UPZSerializer, ZATSerializer, UrbanPerimeterSerializer, MunicipalitySerializer, TreePlotSerializer, AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer
 
 #Chart Domains
@@ -518,7 +516,7 @@ class EscalaFilter:
         return [labels, list_loc[neigh]['data'].keys(), data_list]
     
     def filterByNeighYear (self, class_, space_list, time_list, columns, extrapolate=False):
-        neigh_values = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME", "AREA"))     
+        neigh_values = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME", "AREA"))   
         
         list_neigh = dict()
         for neigh in neigh_values:
@@ -536,9 +534,7 @@ class EscalaFilter:
             'area': sum(neigh['AREA'] for neigh in neigh_values if neigh['NAME'] == 'NA'),
             'data': {year: 0 for year in time_list}
         }
-                
-        data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
-
+        
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD], columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
         for value in data:
             try:
@@ -593,6 +589,7 @@ class EscalaFilter:
                 data_list.append(data_count)
         
         return [labels, list_neigh['OTHERS']['data'].keys(), data_list]
+    
     
 # Colección de ViewSets para [TrafficCollision] 
 class TrafficCollisionViewSet (viewsets.ModelViewSet):
@@ -1112,6 +1109,79 @@ class LandSurfaceTemperatureViewSet (viewsets.ModelViewSet):
         serializer = LandSurfaceTemperatureSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data[0])
 
+class LandSurfaceTemperatureMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
+    serializer_class = LandSurfaceTemperatureSerializer
+    
+    def list (self, request):        
+        COLUMNS = {
+            YEARS: "YEAR"
+        }
+        
+        params = self.request.query_params
+        time_list = self.timeFilter(LandSurfaceTemperature, COLUMNS[YEARS], params)
+        
+        data = list(LandSurfaceTemperature.objects.filter(YEAR__in=time_list).order_by(COLUMNS[YEARS]).values("RASTER", COLUMNS[YEARS]))
+
+        means_list = dict()
+        std_list = dict()
+        for value in data:
+            if (value[COLUMNS[YEARS]] > 1900):
+                raster = GDALRaster(value['RASTER'])
+                raster_data = raster.bands[0].statistics()
+                mean = raster_data[2]
+                std = raster_data[3]
+                
+                means_list[value[COLUMNS[YEARS]]] = mean
+                std_list[value[COLUMNS[YEARS]]] = std
+                
+                     
+        mun_mean = round(sum(list(means_list.values())) / len(means_list.keys()), 3)
+        mun_std = round(math.sqrt(sum([std**2 for std in std_list.values()])), 3)
+        
+        dataset = {'label': "Barranquilla", 'data': [mun_mean, mun_std]}
+        response = {
+            'labels': ['mean', 'std'], 
+            'datasets': dataset, 
+            'chart': [LINE, BAR]
+            }
+        
+        return Response(response)
+
+class LandSurfaceTemperatureMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
+    serializer_class = LandSurfaceTemperatureSerializer
+    
+    def list (self, request):        
+        COLUMNS = {
+            YEARS: "YEAR"
+        }
+        
+        params = self.request.query_params
+        time_list = self.timeFilter(LandSurfaceTemperature, COLUMNS[YEARS], params)
+        
+        data = list(LandSurfaceTemperature.objects.filter(YEAR__in=time_list).order_by(COLUMNS[YEARS]).values("RASTER", COLUMNS[YEARS]))
+
+        means_list = dict()
+        std_list = dict()
+        for value in data:
+            if (value[COLUMNS[YEARS]] > 1900):
+                raster = GDALRaster(value['RASTER'])
+                raster_data = raster.bands[0].statistics()
+                mean = round(raster_data[2], 3)
+                std = round(raster_data[3], 3)
+                
+                means_list[value[COLUMNS[YEARS]]] = mean
+                std_list[value[COLUMNS[YEARS]]] = std
+        
+        dataset = [{'label': "Means", 'data': means_list.values()},
+                   {'label': "Standard Deviation", 'data': std_list.values()}]
+        response = {
+            'labels': means_list.keys(), 
+            'datasets': dataset, 
+            'chart': [LINE, BAR]
+            }
+        
+        return Response(response)
+    
 # Colección de ViewSets para [NDVI] 
 class NDVIViewSet (viewsets.ModelViewSet):
     serializer_class = NDVISerializer
@@ -1121,7 +1191,6 @@ class NDVIViewSet (viewsets.ModelViewSet):
         
         if 'YY' in params:
             queryset = NDVI.objects.filter(YEAR=params.get("YY"))
-            print(list(queryset.values("ID_NDVI", "RASTER"))[0]['RASTER'])
         elif 'ID' in params:
             queryset = NDVI.objects.filter(ID_NDVI=params.get("ID"))
         else:
@@ -1130,6 +1199,78 @@ class NDVIViewSet (viewsets.ModelViewSet):
         #print(NDVI.objects.all().values("ID_NDVI", "RASTER"))
         serializer = NDVISerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data[0])
+
+class NDVIMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
+    serializer_class = NDVISerializer
+    
+    def list (self, request):        
+        COLUMNS = {
+            YEARS: "YEAR"
+        }
+        
+        params = self.request.query_params
+        time_list = self.timeFilter(NDVI, COLUMNS[YEARS], params)
+        
+        data = list(NDVI.objects.filter(YEAR__in=time_list).order_by(COLUMNS[YEARS]).values("RASTER", COLUMNS[YEARS]))
+
+        means_list = dict()
+        std_list = dict()
+        for value in data:
+            if (value[COLUMNS[YEARS]] > 1900):
+                raster = GDALRaster(value['RASTER'])
+                raster_data = raster.bands[0].statistics()
+                mean = raster_data[2]
+                std = raster_data[3]
+                
+                means_list[value[COLUMNS[YEARS]]] = mean
+                std_list[value[COLUMNS[YEARS]]] = std
+        
+        mun_mean = round(sum(list(means_list.values())) / len(means_list.keys()), 3)
+        mun_std = round(math.sqrt(sum([std**2 for std in std_list.values()])), 3)
+        
+        dataset = {'label': "Barranquilla", 'data': [mun_mean, mun_std]}
+        response = {
+            'labels': ['mean', 'std'], 
+            'datasets': dataset, 
+            'chart': [LINE, BAR]
+            }
+        
+        return Response(response)
+
+class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
+    serializer_class = NDVISerializer
+    
+    def list (self, request):        
+        COLUMNS = {
+            YEARS: "YEAR"
+        }
+        
+        params = self.request.query_params
+        time_list = self.timeFilter(NDVI, COLUMNS[YEARS], params)
+        
+        data = list(NDVI.objects.filter(YEAR__in=time_list).order_by(COLUMNS[YEARS]).values("RASTER", COLUMNS[YEARS]))
+
+        means_list = dict()
+        std_list = dict()
+        for value in data:
+            if (value[COLUMNS[YEARS]] > 1900):
+                raster = GDALRaster(value['RASTER'])
+                raster_data = raster.bands[0].statistics()
+                mean = round(raster_data[2], 3)
+                std = round(raster_data[3], 3)
+                
+                means_list[value[COLUMNS[YEARS]]] = mean
+                std_list[value[COLUMNS[YEARS]]] = std
+        
+        dataset = [{'label': "NDVI Means", 'data': means_list.values()},
+                   {'label': "NDVI Std", 'data': std_list.values()}]
+        response = {
+            'labels': means_list.keys(), 
+            'datasets': dataset, 
+            'chart': [LINE, BAR]
+            }
+        
+        return Response(response)
 
 class NDVITestViewSet (viewsets.ModelViewSet):
     serializer_class = NDVITestSerializer
