@@ -101,9 +101,11 @@ class EscalaFilter:
                                             for month in months_per_year}
         
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS], columns[MONTHS]).order_by(columns[YEARS], columns[MONTHS]).annotate(count=Count(columns[YEARS])))
+        print(data)
         for value in data:
-            list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}/'] = value['count']
+            list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']
                 
+        print(list_months)
         return [list_months.keys(), list_months.values()]
 
     def filterByDays (self, class_, space_list, time_list, columns, extrapolate=False):
@@ -476,7 +478,7 @@ class EscalaFilter:
                 labels.append(loc)
                 data_list.append(data_count)
         
-        return [time_list, labels, data_list]
+        return [labels, time_list, data_list]
     
     def filterByLocMonth (self, class_, space_list, time_list, columns, extrapolate=False):
         months_per_year = [i for i in range(1, 13)]
@@ -513,7 +515,7 @@ class EscalaFilter:
                 labels.append(loc)
                 data_list.append(data_count)
         
-        return [list_loc[neigh]['data'].keys(), labels, data_list]
+        return [labels, list_loc[neigh]['data'].keys(), data_list]
     
     def filterByNeighYear (self, class_, space_list, time_list, columns, extrapolate=False):
         neigh_values = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME", "AREA"))     
@@ -551,7 +553,7 @@ class EscalaFilter:
                 labels.append(list_neigh[neigh]['name'])
                 data_list.append(data_count)
         
-        return [list_neigh['OTHERS']['data'].keys(), labels, data_list]
+        return [labels, list_neigh['OTHERS']['data'].keys(), data_list]
     
     def filterByNeighMonth (self, class_, space_list, time_list, columns, extrapolate=False):
         months_per_year = [i for i in range(1, 13)]
@@ -590,7 +592,7 @@ class EscalaFilter:
                 labels.append(list_neigh[neigh]['name'])
                 data_list.append(data_count)
         
-        return [list_neigh['OTHERS']['data'].keys(), labels, data_list]
+        return [labels, list_neigh['OTHERS']['data'].keys(), data_list]
     
 # Colección de ViewSets para [TrafficCollision] 
 class TrafficCollisionViewSet (viewsets.ModelViewSet):
@@ -617,10 +619,10 @@ class TrafficCollisionCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         if 'filter' in params:
             query_filter = params.get('filter')
             
-            if YEARS in query_filter:
+            if MUNBYYEAR in query_filter:
                 chart = [BAR, LINE]
                 return self.filterByYear(class_, space_list, time_list, columns) + [chart]
-            elif MONTHS in query_filter:
+            elif MUNBYMONTH in query_filter:
                 chart = [BAR, LINE]
                 return self.filterByMonth(class_, space_list, time_list, columns) + [chart]
             elif DAYS in query_filter:
@@ -756,10 +758,10 @@ class TrafficCollisionTSCountViewSet (viewsets.ModelViewSet, EscalaFilter):
             query_filter = params.get('filter')
             if MUNBYYEAR in query_filter:
                 chart = [BAR, LINE]
-                return self.filterByYear(class_, space_list, time_list, columns) + [chart]
+                return [["Barranquilla"]] + self.filterByYear(class_, space_list, time_list, columns) + [chart]
             elif MUNBYMONTH in query_filter:
                 chart = [BAR, LINE]
-                return self.filterByMonth(class_, space_list, time_list, columns) + [chart]
+                return [["Barranquilla"]] + self.filterByMonth(class_, space_list, time_list, columns) + [chart]
             elif NEIGHBYYEAR in query_filter:
                 chart = [LINE]
                 return self.filterByNeighYear(class_, space_list, time_list, columns) + [chart]  
@@ -845,12 +847,12 @@ class TrafficCollisionTSCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         label = "Traffic Collision"
         time_list = self.timeFilter(TrafficCollision, COLUMNS[YEARS], params)
         space_list = self.spaceFilter(TrafficCollision, COLUMNS[NEIGHTBORHOOD], params)
-        print(space_list)
         
-        labels, label_list, data_list, charts = self.searchByFilter(TrafficCollision, space_list, time_list, COLUMNS, DOMAINS, params)
+        label_list, labels, data_list, charts = self.searchByFilter(TrafficCollision, space_list, time_list, COLUMNS, DOMAINS, params)
+        
+        if (len(label_list) == 1):
+            data_list = [data_list]
 
-        print(label_list)
-        print(data_list)
         dataset = [{'label': label, 'data': data_list[i]} for i, label in enumerate(label_list)]
         response = {
             'labels': labels, 
