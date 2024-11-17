@@ -84,27 +84,33 @@ class EscalaFilter:
             
             return space_filtered
 
-    def filterByYear (self, class_, space_list, time_list, columns, extrapolate=False):
+    def filterByYear (self, class_, space_list, time_list, columns, statistics=False):
         list_years = {year: 0 for year in time_list}
-                
+          
+        mun_area = sum([mun["AREA"] for mun in list(Municipality.objects.all().values("ID_MUN", "AREA"))])      
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
         for value in data:
-            list_years[value[columns[YEARS]]] = value['count']
+            if statistics:
+                list_years[value[columns[YEARS]]] = value['count']/mun_area
+            else:
+                list_years[value[columns[YEARS]]] = value['count']
             
         return [list_years.keys(), list_years.values()]
     
-    def filterByMonth (self, class_, space_list, time_list, columns, extrapolate=False):
+    def filterByMonth (self, class_, space_list, time_list, columns, statistics=False):
         months_per_year = [i for i in range(1, 13)]
         list_months = {f'{year}/{month}': 0 for year in time_list
                                             for month in months_per_year}
         
+        mun_area = sum([mun["AREA"] for mun in list(Municipality.objects.all().values("ID_MUN", "AREA"))])
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS], columns[MONTHS]).order_by(columns[YEARS], columns[MONTHS]).annotate(count=Count(columns[YEARS])))
-        print(data)
         for value in data:
-            list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']
-                
-        print(list_months)
-        return [list_months.keys(), list_months.values()]
+            if statistics:
+                list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']/mun_area
+            else:
+                list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']
+
+        return [list(list_months.keys())[:-8], list(list_months.values())[:-8]]
 
     def filterByDays (self, class_, space_list, time_list, columns, extrapolate=False):
         days_for_month = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -163,9 +169,9 @@ class EscalaFilter:
                     'extrapolation': 0
                 }
 
-        list_neigh['OTHERS'] = {
+        list_neigh['OTHER'] = {
             'count': 0,
-            'name': 'OTHERS',
+            'name': 'OTHER',
             'area': sum(neigh['AREA'] for neigh in neigh_values if neigh['NAME'] == 'NA'),
             'extrapolation': 0
         }
@@ -182,10 +188,10 @@ class EscalaFilter:
                 if extrapolate:
                     list_neigh[value[columns[NEIGHTBORHOOD]]]['extrapolation'] = int((list_neigh[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
             except:
-                list_neigh['OTHERS']['count'] += value['count']
+                list_neigh['OTHER']['count'] += value['count']
                 
                 if extrapolate:
-                    list_neigh['OTHERS']['extrapolation'] = int((list_neigh['OTHERS']['area'] * value['sum']) /(value['area'] * 0.0001))
+                    list_neigh['OTHER']['extrapolation'] = int((list_neigh['OTHER']['area'] * value['sum']) /(value['area'] * 0.0001))
         
         
         neigh_data = dict()                   
@@ -296,9 +302,9 @@ class EscalaFilter:
                     'extrapolation': 0
                 }
 
-        list_neigh['OTHERS'] = {
+        list_neigh['OTHER'] = {
             'count': 0,
-            'name': 'OTHERS',
+            'name': 'OTHER',
             'area': sum(neigh['AREA'] for neigh in neigh_values if neigh['NAME'] == 'NA'),
             'extrapolation': 0
         }
@@ -315,10 +321,10 @@ class EscalaFilter:
                 if extrapolate:
                     list_neigh[value[columns[NEIGHTBORHOOD]]]['extrapolation'] = (int((list_neigh[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001)))/list_neigh[value[columns[NEIGHTBORHOOD]]]['area']
             except:
-                list_neigh['OTHERS']['count'] += value['count']/list_neigh['OTHERS']['area']
+                list_neigh['OTHER']['count'] += value['count']/list_neigh['OTHER']['area']
                 
                 if extrapolate:
-                    list_neigh['OTHERS']['extrapolation'] = (int((list_neigh['OTHERS']['area'] * value['sum']) /(value['area'] * 0.0001)))/list_neigh['OTHERS']['area']
+                    list_neigh['OTHER']['extrapolation'] = (int((list_neigh['OTHER']['area'] * value['sum']) /(value['area'] * 0.0001)))/list_neigh['OTHER']['area']
           
         neigh_data = dict()                   
         for neigh in list_neigh.keys():
@@ -443,7 +449,7 @@ class EscalaFilter:
         
         return list_months
     
-    def filterByLocYear (self, class_, space_list, time_list, columns, extrapolate=False):
+    def filterByLocYear (self, class_, space_list, time_list, columns, statistics=False):
         list_neigh = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY", "AREA"))   
         loc_ids = set([neigh['LOCALITY'] for neigh in list_neigh])
         loc_names = {loc["ID_LOCALITY"]: loc['NAME'] for loc in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_ids).values("ID_LOCALITY", "NAME"))}
@@ -462,23 +468,31 @@ class EscalaFilter:
             list_loc[value[columns[NEIGHTBORHOOD]]]['data'][ value[columns[YEARS]]] = value['count']
         
         loc_data = dict()  
+        loc_area = dict()
         for neigh in list_loc.keys():
             if sum(list_loc[neigh]['data'].values()) > 0:
                 if (list_loc[neigh]['locality'] not in loc_data.keys()):
                     loc_data[list_loc[neigh]['locality']] = [0 for i in list_loc[neigh]['data']]
+                    loc_area[list_loc[neigh]['locality']] = 0
                 
                 loc_data[list_loc[neigh]['locality']] = [sum(i) for i in zip(loc_data[list_loc[neigh]['locality']], list_loc[neigh]['data'].values())] 
+                loc_area[list_loc[neigh]['locality']] += list_loc[neigh]['area']
 
         labels, data_list = [], []
         for loc in loc_data.keys():
             data_count = loc_data[loc]
+            area = loc_area[loc]
             if (sum(data_count) > 0):
-                labels.append(loc)
-                data_list.append(data_count)
+                if statistics:
+                    labels.append(loc)
+                    data_list.append([data/area for data in data_count])
+                else:
+                    labels.append(loc)
+                    data_list.append(data_count)
         
         return [labels, time_list, data_list]
     
-    def filterByLocMonth (self, class_, space_list, time_list, columns, extrapolate=False):
+    def filterByLocMonth (self, class_, space_list, time_list, columns, statistics=False):
         months_per_year = [i for i in range(1, 13)]
         list_neigh = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY", "AREA"))   
         loc_ids = set([neigh['LOCALITY'] for neigh in list_neigh])
@@ -499,23 +513,33 @@ class EscalaFilter:
             list_loc[value[columns[NEIGHTBORHOOD]]]['data'][f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']
         
         loc_data = dict()  
+        loc_area = dict()
         for neigh in list_loc.keys():
             if sum(list_loc[neigh]['data'].values()) > 0:
                 if (list_loc[neigh]['locality'] not in loc_data.keys()):
                     loc_data[list_loc[neigh]['locality']] = [0 for i in list_loc[neigh]['data']]
+                    loc_area[list_loc[neigh]['locality']] = 0
                 
                 loc_data[list_loc[neigh]['locality']] = [sum(i) for i in zip(loc_data[list_loc[neigh]['locality']], list_loc[neigh]['data'].values())] 
+                loc_area[list_loc[neigh]['locality']] += list_loc[neigh]['area']
 
+        
+        
         labels, data_list = [], []
         for loc in loc_data.keys():
             data_count = loc_data[loc]
+            area = loc_area[loc]
             if (sum(data_count) > 0):
-                labels.append(loc)
-                data_list.append(data_count)
+                if statistics:
+                    labels.append(loc)
+                    data_list.append([data/area for data in data_count][:-8])
+                else:
+                    labels.append(loc)
+                    data_list.append(data_count[:-8])
         
-        return [labels, list_loc[neigh]['data'].keys(), data_list]
+        return [labels, list(list_loc[neigh]['data'].keys())[:-8], data_list]
     
-    def filterByNeighYear (self, class_, space_list, time_list, columns, extrapolate=False):
+    def filterByNeighYear (self, class_, space_list, time_list, columns, statistics=False):
         neigh_values = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME", "AREA"))   
         
         list_neigh = dict()
@@ -525,33 +549,47 @@ class EscalaFilter:
                     'count': 0,
                     'name': neigh['NAME'].replace("_", " "),
                     'area': neigh['AREA'],
+                    'total': 0,
                     'data': {year: 0 for year in time_list}
                 }
 
-        list_neigh['OTHERS'] = {
+        list_neigh['OTHER'] = {
             'count': 0,
-            'name': 'OTHERS',
+            'name': 'OTHER',
             'area': sum(neigh['AREA'] for neigh in neigh_values if neigh['NAME'] == 'NA'),
+            'total': 0,
             'data': {year: 0 for year in time_list}
         }
         
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD], columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
         for value in data:
             try:
-                list_neigh[value[columns[NEIGHTBORHOOD]]]['data'][value[columns[YEARS]]] = value['count']
+                if statistics:
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['data'][value[columns[YEARS]]] = value['count'] / list_neigh[value[columns[NEIGHTBORHOOD]]]['area']
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['total'] += value['count'] / list_neigh[value[columns[NEIGHTBORHOOD]]]['area']
+                else:
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['data'][value[columns[YEARS]]] = value['count']
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['total'] += value['count'] 
             except:
-                list_neigh['OTHERS']['data'][value[columns[YEARS]]] += value['count']
+                if statistics:
+                    list_neigh['OTHER']['data'][value[columns[YEARS]]] += value['count'] / list_neigh['OTHER']['area']
+                    list_neigh['OTHER']['total'] += value['count'] / list_neigh['OTHER']['area']
+                else:
+                    list_neigh['OTHER']['data'][value[columns[YEARS]]] += value['count']
+                    list_neigh['OTHER']['total'] += value['count']
+        
+        list_neigh = dict(sorted(list_neigh.items(), key=lambda item: item[1]['total'], reverse=True))
         
         labels, data_list = [], []
-        for neigh in list_neigh.keys():
+        for neigh in list(list_neigh.keys())[:10]:
             data_count = list(list_neigh[neigh]['data'].values())
             if (sum(data_count) > 0):
                 labels.append(list_neigh[neigh]['name'])
                 data_list.append(data_count)
         
-        return [labels, list_neigh['OTHERS']['data'].keys(), data_list]
+        return [labels, list_neigh['OTHER']['data'].keys(), data_list]
     
-    def filterByNeighMonth (self, class_, space_list, time_list, columns, extrapolate=False):
+    def filterByNeighMonth (self, class_, space_list, time_list, columns, statistics=False):
         months_per_year = [i for i in range(1, 13)]
         neigh_values = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME", "AREA"))     
         
@@ -562,14 +600,16 @@ class EscalaFilter:
                     'count': 0,
                     'name': neigh['NAME'].replace("_", " "),
                     'area': neigh['AREA'],
+                    'total': 0,
                     'data': {f'{year}/{month}': 0 for year in time_list
                                                   for month in months_per_year}
                 }
 
-        list_neigh['OTHERS'] = {
+        list_neigh['OTHER'] = {
             'count': 0,
-            'name': 'OTHERS',
+            'name': 'OTHER',
             'area': sum(neigh['AREA'] for neigh in neigh_values if neigh['NAME'] == 'NA'),
+            'total': 0,
             'data': {f'{year}/{month}': 0 for year in time_list
                                           for month in months_per_year}
         }
@@ -577,18 +617,32 @@ class EscalaFilter:
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[NEIGHTBORHOOD], columns[YEARS], columns[MONTHS]).order_by(columns[YEARS], columns[MONTHS]).annotate(count=Count(columns[YEARS])))
         for value in data:
             try:
-                list_neigh[value[columns[NEIGHTBORHOOD]]]['data'][f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']
+                if statistics:
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['data'][f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count'] / list_neigh[value[columns[NEIGHTBORHOOD]]]['area']
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['total'] += value['count'] / list_neigh[value[columns[NEIGHTBORHOOD]]]['area']
+                else:
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['data'][f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']
+                    list_neigh[value[columns[NEIGHTBORHOOD]]]['total'] += value['count'] 
             except:
-                list_neigh['OTHERS']['data'][f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] += value['count']
+                if statistics:
+                    list_neigh['OTHER']['data'][f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] += value['count'] / list_neigh['OTHER']['area']
+                    list_neigh['OTHER']['total'] += value['count'] / list_neigh['OTHER']['area']
+                else:
+                    list_neigh['OTHER']['data'][f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] += value['count']
+                    list_neigh['OTHER']['total'] += value['count']
+        
+        
+        list_neigh = dict(sorted(list_neigh.items(), key=lambda item: item[1]['total'], reverse=True))
         
         labels, data_list = [], []
-        for neigh in list_neigh.keys():
-            data_count = list(list_neigh[neigh]['data'].values())
+        for neigh in list(list_neigh.keys())[:10]:
+            data_count = list(list_neigh[neigh]['data'].values())[:-8]
             if (sum(data_count) > 0):
                 labels.append(list_neigh[neigh]['name'])
                 data_list.append(data_count)
         
-        return [labels, list_neigh['OTHERS']['data'].keys(), data_list]
+        months_list = list(list_neigh['OTHER']['data'].keys())[:-8]
+        return [labels, months_list, data_list]
     
     
 # Colección de ViewSets para [TrafficCollision] 
@@ -745,7 +799,134 @@ class TrafficCollisionCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         
         return Response(response)
 
+'''
+[TrafficCollision] Mean Query
+QueryParams:
+- filter: one of (municipality_YY, municipality_MM, locality_YY, locality_MM, neighborhood_YY, neighborhood_MM)
+- time: (First [YEAR], Last [YEAR])
+- space: (List of [Neightborhood])
+'''
+class TrafficCollisionTSMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
+    queryset = TrafficCollision.objects.all()
+    serializer_class = TrafficCollisionSerializer
+    
+    def searchByFilter (self, class_, space_list, time_list, columns, DOMAINS, params):
+        if 'filter' in params:
+            query_filter = params.get('filter')
+            if MUNBYYEAR in query_filter:
+                chart = [BAR, LINE]
+                return [["Barranquilla"]] + self.filterByYear(class_, space_list, time_list, columns, statistics=True) + [chart]
+            elif MUNBYMONTH in query_filter:
+                chart = [BAR, LINE]
+                return [["Barranquilla"]] + self.filterByMonth(class_, space_list, time_list, columns, statistics=True) + [chart]
+            elif NEIGHBYYEAR in query_filter:
+                chart = [LINE]
+                return self.filterByNeighYear(class_, space_list, time_list, columns, statistics=True) + [chart]  
+            elif NEIGHBYMONTH in query_filter:
+                chart = [LINE]
+                return self.filterByNeighMonth(class_, space_list, time_list, columns, statistics=True) + [chart]  
+            elif LOCBYYEAR in query_filter:
+                chart = [LINE]
+                return self.filterByLocYear(class_, space_list, time_list, columns, statistics=True) + [chart]  
+            elif LOCBYMONTH in query_filter:
+                chart = [LINE]
+                return self.filterByLocMonth(class_, space_list, time_list, columns, statistics=True) + [chart]    
+            else:
+                return [], [], [], []
+        else:
+            return [], [], [], []
+    
+    def list (self, request, *args, **kwargs):
+        params = self.request.query_params
+        
+        COLUMNS = {
+            YEARS: "COLYEAR",
+            MONTHS: "COLMONTH",
+            DAYS: "COLDAY",
+            HOURS: "COLHOUR",
+            NEIGHTBORHOOD: "ID_NEIGHB",
+            ZONE: "COLZONE",
+            AREA: "COLAREA",
+            SEVERITY: "COLSEV",
+            TYPE: "COLTYP",
+            OBJ: "COLOBJ",
+            OBJTYP: "COLOBJTYP",
+        }
 
+        DOMAINS = {
+            COLUMNS[ZONE]: {
+                1: 'Hospital',
+                2: 'Military',
+                3: 'Private',
+                4: 'School',
+                5: 'Sports',
+                6: 'Tourist',
+                7: 'Not reported'
+            },
+            COLUMNS[AREA]: {
+                1: 'Rural',
+                2: 'Urban'
+            },
+            COLUMNS[SEVERITY]: {
+                1: 'Fatal',
+                2: 'Injured',
+                3: 'Unharmed',
+                4: 'Not reported'
+            },
+            COLUMNS[TYPE]: {
+                1: 'Crash',
+                2: 'Fire',
+                3: 'Occupant fall',
+                4: 'Pedestrian collision',
+                5: 'Rollover',
+                6: 'Other'
+            },
+            COLUMNS[OBJ]: {
+                1: 'Fixed object',
+                2: 'Moving object',
+                3: 'Vehicle',
+                4: 'Not reported'
+            },
+            COLUMNS[OBJTYP]: {
+                1: 'Building',
+                2: 'Guardrail',
+                3: 'Parked vehicle',
+                4: 'Pole',
+                5: 'Sing',
+                6: 'Traffic light',
+                7: 'Tree',
+                8: 'Wall',
+                9: 'Other',
+                10: 'Not reported'
+            }
+        }
+        
+        label = "Traffic Collision"
+        time_list = self.timeFilter(TrafficCollision, COLUMNS[YEARS], params)
+        space_list = self.spaceFilter(TrafficCollision, COLUMNS[NEIGHTBORHOOD], params)
+        
+        label_list, labels, data_list, charts = self.searchByFilter(TrafficCollision, space_list, time_list, COLUMNS, DOMAINS, params)
+        
+        if (len(label_list) == 1):
+            data_list = [data_list]
+
+        dataset = [{'label': label, 'data': data_list[i]} for i, label in enumerate(label_list)]
+        response = {
+            'labels': labels, 
+            'datasets': dataset, 
+            'chart': charts
+            }
+        
+        return Response(response)
+
+
+'''
+[TrafficCollision] Count Query
+QueryParams:
+- filter: one of (municipality_YY, municipality_MM, locality_YY, locality_MM, neighborhood_YY, neighborhood_MM)
+- time: (First [YEAR], Last [YEAR])
+- space: (List of [Neightborhood])
+'''
 class TrafficCollisionTSCountViewSet (viewsets.ModelViewSet, EscalaFilter):
     queryset = TrafficCollision.objects.all()
     serializer_class = TrafficCollisionSerializer
@@ -987,7 +1168,7 @@ class TreePlotCountViewSet (viewsets.ModelViewSet, EscalaFilter):
             CCV: "TPCCV"
         }
 
-        label = "Tree Plot"
+        label = "Tree Count"
         space_list = self.spaceFilter(TreePlot, COLUMNS[NEIGHTBORHOOD], params)
         
         labels, data_list, charts = self.searchByFilter(TreePlot, space_list, COLUMNS, params)
@@ -1037,7 +1218,7 @@ class TreePlotAreaCountViewSet (viewsets.ModelViewSet, EscalaFilter):
             NEIGHTBORHOOD: "ID_NEIGHB",
         }
 
-        label = "Tree Plot/Hectare"
+        label = "Tree/Hectare"
         space_list = self.spaceFilter(TreePlot, COLUMNS[NEIGHTBORHOOD], params)
         
         labels, data_list, charts = self.searchByFilter(TreePlot, space_list, COLUMNS, params)
@@ -1280,6 +1461,7 @@ class NDVITestViewSet (viewsets.ModelViewSet):
         
         if 'YY' in params:
             queryset = NDVI.objects.filter(YEAR=params.get("YY"))
+            
         elif 'ID' in params:
             queryset = NDVI.objects.filter(ID_NDVI=params.get("ID"))
         else:
