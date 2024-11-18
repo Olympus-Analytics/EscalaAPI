@@ -6,6 +6,7 @@ import re, math
 import numpy as np
 
 from django.contrib.gis.gdal.raster.source import GDALRaster
+from django.db import connection
 
 from .models import TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, AirTemperature, Rainfall, LandSurfaceTemperature, NDVI
 from .serializer import TrafficCollisionSerializer, TrafficCollisionPointSerializer
@@ -644,6 +645,34 @@ class EscalaFilter:
         months_list = list(list_neigh['OTHER']['data'].keys())[:-8]
         return [labels, months_list, data_list]
     
+    def getRasterLocalityMean (self, class_name, id_column, locality_id, raster_ids):
+        with connection.cursor() as cursor:
+                    raster_ids_str = ', '.join([f"'{raster_id}'" for raster_id in raster_ids])
+        
+                    cursor.execute(f'''      
+                        SELECT 
+                            subquery."ID_NDVI", 
+                            AVG((pvc).value) AS mean_value
+                        FROM (
+                            SELECT 
+                                ST_ValueCount(
+                                    ST_Clip(nv."RASTER", 1, ST_Transform(lb."POLY", ST_SRID(nv."RASTER")), true)
+                                ) AS pvc,
+                                nv."ID_NDVI"
+                            FROM visualization_ndvi nv, visualization_locality_bar lb
+                            WHERE lb."ID_LOCALITY" = %s 
+                            AND nv."ID_NDVI" IN ({raster_ids_str})
+                        ) AS subquery
+                        WHERE (pvc).value IS NOT NULL
+                        AND (pvc).value != 'NaN'
+                        AND (pvc).value < 100
+                        AND (pvc).value > -100
+                        GROUP BY subquery."ID_NDVI";
+                    ''', [locality_id])
+                    results = cursor.fetchall()
+                    return results
+                
+        return 0
     
 # Colección de ViewSets para [TrafficCollision] 
 class TrafficCollisionViewSet (viewsets.ModelViewSet):
@@ -1421,6 +1450,74 @@ class NDVIMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
 class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
     serializer_class = NDVISerializer
     
+    def searchByFilter (self, time_list, space_list, columns, params):
+        if 'filter' in params:
+            query_filter = params.get('filter')
+            time_list = [year for year in time_list if year > 1900]
+            
+            if MUNICIPALITY in query_filter:
+                data = list(NDVI.objects.filter(YEAR__in=time_list).order_by(columns[YEARS]).values("RASTER", columns[YEARS]))
+
+                means_list = dict()
+                std_list = dict()
+                for value in data:
+                    if (value[columns[YEARS]] > 1900):
+                        raster = GDALRaster(value['RASTER'])
+                        raster_data = raster.bands[0].statistics()
+                        mean = round(raster_data[2], 3)
+                        std = round(raster_data[3], 3)
+                        
+                        means_list[value[columns[YEARS]]] = mean
+                        std_list[value[columns[YEARS]]] = std
+                
+                dataset = [{'label': "NDVI Means", 'data': means_list.values()},
+                        {'label': "NDVI Std", 'data': std_list.values()}]
+                
+                return dataset, means_list.keys()
+            elif LOCALITY in query_filter:
+                data = list(NDVI.objects.filter(YEAR__in=time_list).order_by(columns[YEARS]).values("ID_NDVI", columns[YEARS]))
+                print("LOCALITY")
+                list_neigh = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY", "AREA"))   
+                loc_ids = set([neigh['LOCALITY'] for neigh in list_neigh])
+                loc_names = {loc["ID_LOCALITY"]: loc['NAME'] for loc in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_ids).values("ID_LOCALITY", "NAME"))}
+                
+                list_loc = dict()
+                for loc in loc_names.keys():
+                    list_loc[loc] = {
+                        "name": loc_names[loc],
+                        "data": {year: 0 for year in time_list} 
+                    }               
+                
+                raster_ids = [raster['ID_NDVI'] for raster in data if raster[columns[YEARS]] > 1000]
+                
+                for loc in list_loc.keys():
+                    mean = self.getRasterLocalityMean("ndvi", "ID_NDVI", loc, raster_ids)
+                    
+                    for data in mean:
+                        year = int(data[0].split("_")[1])
+                        list_loc[loc]['data'][year] = data[1]
+                                    
+                labels = time_list
+                
+                means_list = dict()
+                std_list = dict()
+                
+                datasets = [
+                    {
+                        'label': list_loc[loc]['name'],
+                        'dataset': list(list_loc[loc]['data'].values())   
+                    } for loc in list_loc.keys()
+                ]
+                
+                return datasets, labels
+                
+            elif NEIGHTBORHOOD in query_filter:
+                pass
+            else:
+                return [], ""
+        else:
+                return [], ""
+    
     def list (self, request):        
         COLUMNS = {
             YEARS: "YEAR"
@@ -1428,25 +1525,13 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
         
         params = self.request.query_params
         time_list = self.timeFilter(NDVI, COLUMNS[YEARS], params)
+        space_list = space_list = self.spaceFilter(TreePlot, 'ID_NEIGHB', params)
         
-        data = list(NDVI.objects.filter(YEAR__in=time_list).order_by(COLUMNS[YEARS]).values("RASTER", COLUMNS[YEARS]))
-
-        means_list = dict()
-        std_list = dict()
-        for value in data:
-            if (value[COLUMNS[YEARS]] > 1900):
-                raster = GDALRaster(value['RASTER'])
-                raster_data = raster.bands[0].statistics()
-                mean = round(raster_data[2], 3)
-                std = round(raster_data[3], 3)
-                
-                means_list[value[COLUMNS[YEARS]]] = mean
-                std_list[value[COLUMNS[YEARS]]] = std
+        dataset, labels = self.searchByFilter(time_list, space_list, COLUMNS, params)
         
-        dataset = [{'label': "NDVI Means", 'data': means_list.values()},
-                   {'label': "NDVI Std", 'data': std_list.values()}]
+        print(dataset)
         response = {
-            'labels': means_list.keys(), 
+            'labels': labels, 
             'datasets': dataset, 
             'chart': [LINE, BAR]
             }
