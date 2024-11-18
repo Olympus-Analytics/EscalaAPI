@@ -651,24 +651,53 @@ class EscalaFilter:
         
                     cursor.execute(f'''      
                         SELECT 
-                            subquery."ID_NDVI", 
+                            subquery."{id_column}", 
                             AVG((pvc).value) AS mean_value
                         FROM (
                             SELECT 
                                 ST_ValueCount(
                                     ST_Clip(nv."RASTER", 1, ST_Transform(lb."POLY", ST_SRID(nv."RASTER")), true)
                                 ) AS pvc,
-                                nv."ID_NDVI"
-                            FROM visualization_ndvi nv, visualization_locality_bar lb
+                                nv."{id_column}"
+                            FROM visualization_{class_name} nv, visualization_locality_bar lb
                             WHERE lb."ID_LOCALITY" = %s 
-                            AND nv."ID_NDVI" IN ({raster_ids_str})
+                            AND nv."{id_column}" IN ({raster_ids_str})
                         ) AS subquery
                         WHERE (pvc).value IS NOT NULL
                         AND (pvc).value != 'NaN'
                         AND (pvc).value < 100
                         AND (pvc).value > -100
-                        GROUP BY subquery."ID_NDVI";
+                        GROUP BY subquery."{id_column}";
                     ''', [locality_id])
+                    results = cursor.fetchall()
+                    return results
+                
+        return 0
+    
+    def getRasterNeighMean (self, class_name, id_column, neigh_id, raster_ids):
+        with connection.cursor() as cursor:
+                    raster_ids_str = ', '.join([f"'{raster_id}'" for raster_id in raster_ids])
+        
+                    cursor.execute(f'''      
+                        SELECT 
+                            subquery."{id_column}", 
+                            AVG((pvc).value) AS mean_value
+                        FROM (
+                            SELECT 
+                                ST_ValueCount(
+                                    ST_Clip(nv."RASTER", 1, ST_Transform(lb."POLY", ST_SRID(nv."RASTER")), true)
+                                ) AS pvc,
+                                nv."{id_column}"
+                            FROM visualization_{class_name} nv, visualization_neightborhood lb
+                            WHERE lb."ID_NEIGHB" = %s 
+                            AND nv."{id_column}" IN ({raster_ids_str})
+                        ) AS subquery
+                        WHERE (pvc).value IS NOT NULL
+                        AND (pvc).value != 'NaN'
+                        AND (pvc).value < 100
+                        AND (pvc).value > -100
+                        GROUP BY subquery."{id_column}";
+                    ''', [neigh_id])
                     results = cursor.fetchall()
                     return results
                 
@@ -1360,32 +1389,117 @@ class LandSurfaceTemperatureMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter)
 class LandSurfaceTemperatureMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
     serializer_class = LandSurfaceTemperatureSerializer
     
+    def searchByFilter (self, time_list, space_list, columns, params):
+        if 'filter' in params:
+            query_filter = params.get('filter')
+            time_list = [year for year in time_list if year > 1900]
+            
+            if MUNICIPALITY in query_filter:
+                data = list(LandSurfaceTemperature.objects.filter(YEAR__in=time_list).order_by(columns[YEARS]).values("RASTER", columns[YEARS]))
+
+                means_list = dict()
+                std_list = dict()
+                for value in data:
+                    if (value[columns[YEARS]] > 1900):
+                        raster = GDALRaster(value['RASTER'])
+                        raster_data = raster.bands[0].statistics()
+                        mean = round(raster_data[2], 3)
+                        std = round(raster_data[3], 3)
+                        
+                        means_list[value[columns[YEARS]]] = mean
+                        std_list[value[columns[YEARS]]] = std
+                
+                dataset = [{'label': "LST Means", 'data': means_list.values()},
+                        {'label': "LST Std", 'data': std_list.values()}]
+                
+                return dataset, means_list.keys()
+            elif LOCALITY in query_filter:
+                data = list(LandSurfaceTemperature.objects.filter(YEAR__in=time_list).order_by(columns[YEARS]).values("ID_LST", columns[YEARS]))
+                print("LOCALITY")
+                list_neigh = list(Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "LOCALITY", "AREA"))   
+                loc_ids = set([neigh['LOCALITY'] for neigh in list_neigh])
+                loc_names = {loc["ID_LOCALITY"]: loc['NAME'] for loc in list(Locality_bar.objects.all().filter(ID_LOCALITY__in=loc_ids).values("ID_LOCALITY", "NAME"))}
+                
+                list_loc = dict()
+                for loc in loc_names.keys():
+                    list_loc[loc] = {
+                        "name": loc_names[loc],
+                        "data": {year: 0 for year in time_list} 
+                    }               
+                
+                raster_ids = [raster['ID_LST'] for raster in data if raster[columns[YEARS]] > 1000]
+                
+                for loc in list_loc.keys():
+                    mean = self.getRasterLocalityMean("landsurfacetemperature", "ID_LST", loc, raster_ids)
+                    
+                    for data in mean:
+                        year = int(data[0].split("_")[1])
+                        list_loc[loc]['data'][year] = data[1]
+                                    
+                labels = time_list                
+                datasets = [
+                    {
+                        'label': list_loc[loc]['name'],
+                        'dataset': list(list_loc[loc]['data'].values())   
+                    } for loc in list_loc.keys()
+                ]
+                
+                return datasets, labels
+            elif NEIGHTBORHOOD in query_filter:
+                data = list(LandSurfaceTemperature.objects.filter(YEAR__in=time_list).order_by(columns[YEARS]).values("ID_LST", columns[YEARS]))
+                space_list = ['NBAR177', 'NBAR187', 'NBAR167', 'NBAR186', 'NBAR014', 'NBAR188', 'NBAR150', 'NBAR164', 'NBAR180', 'NBAR189']
+                list_neigh = {neigh['ID_NEIGHB']: neigh['NAME'] for neigh in Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME")}
+                
+                list_neighborhood = dict()
+                for neigh in list_neigh.keys():
+                    list_neighborhood[neigh] = {
+                        "name": list_neigh[neigh],
+                        "data": {year: 0 for year in time_list},
+                        "sum": 0
+                    }               
+                
+                raster_ids = [raster['ID_LST'] for raster in data if raster[columns[YEARS]] > 1000]
+                
+                for neigh in list_neighborhood.keys():
+                    mean = self.getRasterNeighMean("landsurfacetemperature", "ID_LST", neigh, raster_ids)
+                    
+                    for data in mean:
+                        if (list_neighborhood[neigh]['name'] == 'NA'):
+                            continue
+                        
+                        year = int(data[0].split("_")[1])
+                        list_neighborhood[neigh]['data'][year] = data[1]
+                    list_neighborhood[neigh]['sum'] = sum(list_neighborhood[neigh]['data'].values())
+                
+                list_neighborhood = dict(sorted(list_neighborhood.items(), key=lambda item: item[1]['sum'], reverse=True))
+                                    
+                labels = time_list                
+                datasets = [
+                    {
+                        'label': list_neighborhood[neigh]['name'],
+                        'dataset': list(list_neighborhood[neigh]['data'].values()) 
+                    } for neigh in list_neighborhood.keys()
+                ]
+                
+                return datasets, labels
+            else:
+                return [], ""
+        else:
+                return [], ""
+            
     def list (self, request):        
         COLUMNS = {
             YEARS: "YEAR"
         }
         
         params = self.request.query_params
-        time_list = self.timeFilter(LandSurfaceTemperature, COLUMNS[YEARS], params)
+        time_list = self.timeFilter(NDVI, COLUMNS[YEARS], params)
+        space_list = space_list = self.spaceFilter(TreePlot, 'ID_NEIGHB', params)
         
-        data = list(LandSurfaceTemperature.objects.filter(YEAR__in=time_list).order_by(COLUMNS[YEARS]).values("RASTER", COLUMNS[YEARS]))
-
-        means_list = dict()
-        std_list = dict()
-        for value in data:
-            if (value[COLUMNS[YEARS]] > 1900):
-                raster = GDALRaster(value['RASTER'])
-                raster_data = raster.bands[0].statistics()
-                mean = round(raster_data[2], 3)
-                std = round(raster_data[3], 3)
-                
-                means_list[value[COLUMNS[YEARS]]] = mean
-                std_list[value[COLUMNS[YEARS]]] = std
+        dataset, labels = self.searchByFilter(time_list, space_list, COLUMNS, params)
         
-        dataset = [{'label': "Means", 'data': means_list.values()},
-                   {'label': "Standard Deviation", 'data': std_list.values()}]
         response = {
-            'labels': means_list.keys(), 
+            'labels': labels, 
             'datasets': dataset, 
             'chart': [LINE, BAR]
             }
@@ -1497,11 +1611,7 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                         year = int(data[0].split("_")[1])
                         list_loc[loc]['data'][year] = data[1]
                                     
-                labels = time_list
-                
-                means_list = dict()
-                std_list = dict()
-                
+                labels = time_list                
                 datasets = [
                     {
                         'label': list_loc[loc]['name'],
@@ -1510,9 +1620,44 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                 ]
                 
                 return datasets, labels
-                
             elif NEIGHTBORHOOD in query_filter:
-                pass
+                data = list(NDVI.objects.filter(YEAR__in=time_list).order_by(columns[YEARS]).values("ID_NDVI", columns[YEARS]))
+                space_list = ['NBAR083', 'NBAR138', 'NBAR159', 'NBAR146', 'NBAR151', 'NBAR147', 'NBAR119', 'NBAR126', 'NBAR012', 'NBAR130']
+                list_neigh = {neigh['ID_NEIGHB']: neigh['NAME'] for neigh in Neightborhood.objects.all().filter(ID_NEIGHB__in=space_list).values("ID_NEIGHB", "NAME")}
+                
+                list_neighborhood = dict()
+                for neigh in list_neigh.keys():
+                    list_neighborhood[neigh] = {
+                        "name": list_neigh[neigh],
+                        "data": {year: 0 for year in time_list},
+                        "sum": 0
+                    }               
+                
+                raster_ids = [raster['ID_NDVI'] for raster in data if raster[columns[YEARS]] > 1000]
+                
+                for neigh in list_neighborhood.keys():
+                    mean = self.getRasterNeighMean("ndvi", "ID_NDVI", neigh, raster_ids)
+                    
+                    for data in mean:
+                        if (list_neighborhood[neigh]['name'] == 'NA'):
+                            continue
+                        
+                        year = int(data[0].split("_")[1])
+                        list_neighborhood[neigh]['data'][year] = data[1]
+                    list_neighborhood[neigh]['sum'] = sum(list_neighborhood[neigh]['data'].values())
+                
+                list_neighborhood = dict(sorted(list_neighborhood.items(), key=lambda item: item[1]['sum'], reverse=True))
+            
+                                    
+                labels = time_list                
+                datasets = [
+                    {
+                        'label': list_neighborhood[neigh]['name'],
+                        'dataset': list(list_neighborhood[neigh]['data'].values()) 
+                    } for neigh in list_neighborhood.keys()
+                ]
+                
+                return datasets, labels
             else:
                 return [], ""
         else:
@@ -1529,7 +1674,6 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
         
         dataset, labels = self.searchByFilter(time_list, space_list, COLUMNS, params)
         
-        print(dataset)
         response = {
             'labels': labels, 
             'datasets': dataset, 
