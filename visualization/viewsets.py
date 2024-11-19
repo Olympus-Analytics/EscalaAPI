@@ -92,7 +92,7 @@ class EscalaFilter:
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
         for value in data:
             if statistics:
-                list_years[value[columns[YEARS]]] = value['count']/mun_area
+                list_years[value[columns[YEARS]]] = round(value['count']/mun_area, 4)
             else:
                 list_years[value[columns[YEARS]]] = value['count']
             
@@ -107,10 +107,10 @@ class EscalaFilter:
         data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS], columns[MONTHS]).order_by(columns[YEARS], columns[MONTHS]).annotate(count=Count(columns[YEARS])))
         for value in data:
             if statistics:
-                list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']/mun_area
+                list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = round(value['count']/mun_area, 4)
             else:
                 list_months[f'{value[columns[YEARS]]}/{value[columns[MONTHS]]}'] = value['count']
-
+                
         return [list(list_months.keys())[:-8], list(list_months.values())[:-8]]
 
     def filterByDays (self, class_, space_list, time_list, columns, extrapolate=False):
@@ -709,8 +709,16 @@ class TrafficCollisionViewSet (viewsets.ModelViewSet):
     serializer_class = TrafficCollisionSerializer
     
 class TrafficCollisionPointViewSet (viewsets.ModelViewSet):
-    queryset = TrafficCollision.objects.all()
     serializer_class = TrafficCollisionPointSerializer
+    
+    def list (self, request):
+        params = self.request.query_params
+        
+        if 'YY' in params:
+            queryset = TrafficCollision.objects.filter(COLYEAR=params.get("YY"))
+        
+        serializer = TrafficCollisionPointSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 '''
@@ -873,10 +881,10 @@ class TrafficCollisionTSMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
             query_filter = params.get('filter')
             if MUNBYYEAR in query_filter:
                 chart = [BAR, LINE]
-                return [["Barranquilla"]] + self.filterByYear(class_, space_list, time_list, columns, statistics=True) + [chart]
+                return [['Barranquilla']] + self.filterByYear(class_, space_list, time_list, columns, statistics=True) + [chart]
             elif MUNBYMONTH in query_filter:
                 chart = [BAR, LINE]
-                return [["Barranquilla"]] + self.filterByMonth(class_, space_list, time_list, columns, statistics=True) + [chart]
+                return [['Barranquilla']] + self.filterByMonth(class_, space_list, time_list, columns, statistics=True) + [chart]
             elif NEIGHBYYEAR in query_filter:
                 chart = [LINE]
                 return self.filterByNeighYear(class_, space_list, time_list, columns, statistics=True) + [chart]  
@@ -1367,6 +1375,7 @@ class LandSurfaceTemperatureMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter)
             if (value[COLUMNS[YEARS]] > 1900):
                 raster = GDALRaster(value['RASTER'])
                 raster_data = raster.bands[0].statistics()
+                print(raster_data)
                 mean = raster_data[2]
                 std = raster_data[3]
                 
@@ -1409,8 +1418,16 @@ class LandSurfaceTemperatureMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                         means_list[value[columns[YEARS]]] = mean
                         std_list[value[columns[YEARS]]] = std
                 
+                up_std = []
+                low_std = []
+                std = list(std_list.values())
+                for i, mean in enumerate(means_list.values()):
+                    up_std.append(round(mean+std[i], 3))
+                    low_std.append(round(mean-std[i], 3))
+                
                 dataset = [{'label': "LST Means", 'data': means_list.values()},
-                        {'label': "LST Std", 'data': std_list.values()}]
+                            {'label': "LST upper Std", 'data': up_std},
+                            {'label': "LST lower Std", 'data': low_std}]
                 
                 return dataset, means_list.keys()
             elif LOCALITY in query_filter:
@@ -1543,6 +1560,7 @@ class NDVIMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
             if (value[COLUMNS[YEARS]] > 1900):
                 raster = GDALRaster(value['RASTER'])
                 raster_data = raster.bands[0].statistics()
+                print(raster_data)
                 mean = raster_data[2]
                 std = raster_data[3]
                 
@@ -1583,9 +1601,17 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                         
                         means_list[value[columns[YEARS]]] = mean
                         std_list[value[columns[YEARS]]] = std
+                        
+                up_std = []
+                low_std = []
+                std = list(std_list.values())
+                for i, mean in enumerate(means_list.values()):
+                    up_std.append(round(mean+std[i],3))
+                    low_std.append(round(mean-std[i], 3))
                 
                 dataset = [{'label': "NDVI Means", 'data': means_list.values()},
-                        {'label': "NDVI Std", 'data': std_list.values()}]
+                        {'label': "NDVI Upper Std", 'data': up_std},
+                        {'label': "NDVI Lower Std", 'data': low_std}]
                 
                 return dataset, means_list.keys()
             elif LOCALITY in query_filter:
@@ -1663,7 +1689,7 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
         else:
                 return [], ""
     
-    def list (self, request):        
+    def list (self, request):
         COLUMNS = {
             YEARS: "YEAR"
         }
