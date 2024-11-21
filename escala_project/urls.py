@@ -26,6 +26,23 @@ from visualization.views import NDVIDownloadView, LSTDownloadView
 import sys
 sys.path.insert(0, r"C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala")
 
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="API Documentation",
+        default_version='v1',
+        description="Test description",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@local.local"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+)
+
 api_url_patterns = [
     path(r'data/', include(visualization_api_router.router.urls)),
     path(r"download/raster/ndvi/<str:raster_id>/", NDVIDownloadView.as_view(), name="download_ndvi"),
@@ -34,5 +51,9 @@ api_url_patterns = [
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(api_url_patterns))
+    path('api/', include(api_url_patterns)),
+    path('documentation/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
