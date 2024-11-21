@@ -1635,7 +1635,7 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                     
                     for data in mean:
                         year = int(data[0].split("_")[1])
-                        list_loc[loc]['data'][year] = data[1]
+                        list_loc[loc]['data'][year] = round(data[1], 3)
                                     
                 labels = time_list                
                 datasets = [
@@ -1670,7 +1670,7 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                         
                         year = int(data[0].split("_")[1])
                         list_neighborhood[neigh]['data'][year] = data[1]
-                    list_neighborhood[neigh]['sum'] = sum(list_neighborhood[neigh]['data'].values())
+                    list_neighborhood[neigh]['sum'] = round(sum(list_neighborhood[neigh]['data'].values()), 3)
                 
                 list_neighborhood = dict(sorted(list_neighborhood.items(), key=lambda item: item[1]['sum'], reverse=True))
             
