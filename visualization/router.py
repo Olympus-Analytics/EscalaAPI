@@ -6,7 +6,7 @@ from .viewsets import NDVIViewSet, NDVIMeanViewSet, NDVIMunMeanViewSet
 from .views import NDVIDownloadView, LSTDownloadView
 
 from .viewsets import TrafficCollisionViewSet, TrafficCollisionPointViewSet, TrafficCollisionCountViewSet, TrafficCollisionAreaCountViewSet, TrafficCollisionTSCountViewSet, TrafficCollisionTSMeanViewSet
-from .viewsets import TreePlotViewSet, TreePlotPointViewSet, TreePlotCountViewSet, TreePlotAreaCountViewSet
+from .viewsets import TreePlotViewSet, TreePlotPointViewSet, TreePlotCountViewSet, TreePlotAreaCountViewSet, TreePlotMunMeanViewSet
 
 app_name = "visualization"
 
@@ -18,7 +18,7 @@ router = routers.DefaultRouter()
 router.register("traffic_collisions", TrafficCollisionViewSet, basename='traffic_collisions_data')
 router.register("traffic_collisions_point", TrafficCollisionPointViewSet, basename='traffic_collisions_point')
 router.register("traffic_collisions_count", TrafficCollisionCountViewSet, basename='traffic_collisions_count')
-router.register("traffic_collisions_area_count", TrafficCollisionAreaCountViewSet, basename="traffic_collisions_area_count")
+router.register("traffic_collisions_mun_mean", TrafficCollisionAreaCountViewSet, basename="traffic_collisions_area_count")
 router.register("traffic_collisions_ts_count", TrafficCollisionTSCountViewSet, basename="traffic_collisions_TS_count")
 router.register("traffic_collisions_ts_mean", TrafficCollisionTSMeanViewSet, basename="traffic_collisions_TS_mean")
 
@@ -27,6 +27,7 @@ router.register("tree_plot", TreePlotViewSet, basename='tree_plot_data')
 router.register("tree_plot_point", TreePlotPointViewSet, basename='tree_plot_point')
 router.register("tree_plot_count", TreePlotCountViewSet, basename='tree_plot_count')
 router.register("tree_plot_area_count", TreePlotAreaCountViewSet, basename='tree_plot_area_count')
+router.register("tree_plot_mun_mean", TreePlotMunMeanViewSet, basename='tree_plot_mun_mean')
 
 # Spatial Filters EndPoints
 router.register("neightborhood", NeightborhoodViewSet, basename='neightborhood_data')

@@ -418,15 +418,29 @@ class EscalaFilter:
             if extrapolate:
                 list_mun[value[columns[NEIGHTBORHOOD]]]['extrapolation'] += int((list_mun[value[columns[NEIGHTBORHOOD]]]['area'] * value['sum']) /(value['area'] * 0.0001))
 
-        data = 0
+        print(mun_area)
+        tot_area = sum([list_mun[neigh]['area'] for neigh in list_mun.keys()])
+        print(tot_area)
+
+        mean = 0
         for neigh in list_mun.keys():
             if list_mun[neigh]['count'] > 0:
                 if extrapolate:
-                    data += list_mun[neigh]['extrapolation'] / mun_area[list_mun[neigh]['municipality']]
+                    mean += list_mun[neigh]['extrapolation']
                 else:
-                    data += list_mun[neigh]['count'] / mun_area[list_mun[neigh]['municipality']]
+                    mean += list_mun[neigh]['count']
+        mean = round(mean/tot_area, 1)
+                    
+        std = 0
+        for neigh in list_mun.keys():
+            if list_mun[neigh]['count'] > 0:
+                if extrapolate:
+                    std += (list_mun[neigh]['extrapolation']/list_mun[neigh]['area'] - mean)**2 / tot_area
+                else:
+                    std += (list_mun[neigh]['count']/list_mun[neigh]['area'] - mean)**2 / tot_area
+        std = round(np.sqrt(std), 1)
 
-        return ["Barranquilla", data]
+        return [['mean', 'std'], [mean, std]]
     
     def meanByYear (self, class_, space_list, time_list, columns):
         list_years = self.filterByYear(class_, space_list, time_list, columns)
@@ -1117,24 +1131,6 @@ class TrafficCollisionAreaCountViewSet (viewsets.ModelViewSet, EscalaFilter):
     queryset = TrafficCollision.objects.all()
     serializer_class = TrafficCollisionSerializer
     
-    def searchByFilter (self, class_, space_list, time_list, columns, params):
-        if 'filter' in params:
-            query_filter = params.get('filter')
-            
-            if MUNICIPALITY in query_filter:
-                chart = [BAR]
-                return self.filterByMunicipalityArea(class_, space_list, time_list, columns) + [chart]
-            elif LOCALITY in query_filter:
-                chart = [BAR]
-                return self.filterByLocalityArea(class_, space_list, time_list, columns) + [chart]
-            elif NEIGHTBORHOOD in query_filter:
-                chart = [BAR]
-                return self.filterByNeighborhoodArea(class_, space_list, time_list, columns) + [chart]  
-            else:
-                return [], [], []
-        else:
-            return [], [], []
-    
     def list (self, request, *args, **kwargs):
         params = self.request.query_params
         
@@ -1146,11 +1142,11 @@ class TrafficCollisionAreaCountViewSet (viewsets.ModelViewSet, EscalaFilter):
             NEIGHTBORHOOD: "ID_NEIGHB",
         }
 
-        label = "Traffic Collision/Hectare"
+        label = "Barranquilla"
         time_list = self.timeFilter(TrafficCollision, COLUMNS[YEARS], params)
         space_list = self.spaceFilter(TrafficCollision, COLUMNS[NEIGHTBORHOOD], params)
         
-        labels, data_list, charts = self.searchByFilter(TrafficCollision, space_list, time_list, COLUMNS, params)
+        labels, data_list, charts = self.filterByMunicipalityArea(TrafficCollision, space_list, time_list, COLUMNS) + [BAR]
 
         dataset = {'label': label, 'data': data_list}
         response = {
@@ -1248,6 +1244,33 @@ class TreePlotCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         
         return Response(response)
 
+
+class TreePlotMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
+    queryset = TreePlot.objects.all()
+    serializer_class = TreePlotSerializer
+    
+    def list (self, request, *args, **kwargs):
+        params = self.request.query_params
+        
+        COLUMNS = {
+            NEIGHTBORHOOD: "ID_NEIGHB",
+        }
+
+        label = "Barranquilla"
+        space_list = self.spaceFilter(TreePlot, COLUMNS[NEIGHTBORHOOD], params)
+        
+        labels, data_list, charts = self.filterByMunicipalityArea(TreePlot, space_list, [], COLUMNS, extrapolate=True) + [BAR]
+
+        dataset = {'label': label, 'data': data_list}
+        response = {
+            'labels': labels, 
+            'datasets': dataset, 
+            'chart': charts
+            }
+        
+        return Response(response)
+    
+    
 '''
 [TreePlot] Area Count Query
 QueryParams:
@@ -1263,10 +1286,7 @@ class TreePlotAreaCountViewSet (viewsets.ModelViewSet, EscalaFilter):
         if 'filter' in params:
             query_filter = params.get('filter')
             
-            if MUNICIPALITY in query_filter:
-                chart = [BAR]
-                return self.filterByMunicipalityArea(class_, space_list, [], columns, extrapolate=True) + [chart]
-            elif LOCALITY in query_filter:
+            if LOCALITY in query_filter:
                 chart = [BAR]
                 return self.filterByLocalityArea(class_, space_list, [], columns, extrapolate=True) + [chart]
             elif NEIGHTBORHOOD in query_filter:
@@ -1383,8 +1403,8 @@ class LandSurfaceTemperatureMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter)
                 std_list[value[COLUMNS[YEARS]]] = std
                 
                      
-        mun_mean = round(sum(list(means_list.values())) / len(means_list.keys()), 3)
-        mun_std = round(math.sqrt(sum([std**2 for std in std_list.values()])), 3)
+        mun_mean = round(sum(list(means_list.values())) / len(means_list.keys()), 1)
+        mun_std = round(math.sqrt(sum([std**2 for std in std_list.values()])), 1)
         
         dataset = {'label': "Barranquilla", 'data': [mun_mean, mun_std]}
         response = {
@@ -1451,7 +1471,7 @@ class LandSurfaceTemperatureMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                     
                     for data in mean:
                         year = int(data[0].split("_")[1])
-                        list_loc[loc]['data'][year] = data[1]
+                        list_loc[loc]['data'][year] = round(data[1], 3)
                                     
                 labels = time_list                
                 datasets = [
@@ -1485,7 +1505,7 @@ class LandSurfaceTemperatureMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                             continue
                         
                         year = int(data[0].split("_")[1])
-                        list_neighborhood[neigh]['data'][year] = data[1]
+                        list_neighborhood[neigh]['data'][year] = round(data[1], 3)
                     list_neighborhood[neigh]['sum'] = sum(list_neighborhood[neigh]['data'].values())
                 
                 list_neighborhood = dict(sorted(list_neighborhood.items(), key=lambda item: item[1]['sum'], reverse=True))
@@ -1567,8 +1587,8 @@ class NDVIMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                 means_list[value[COLUMNS[YEARS]]] = mean
                 std_list[value[COLUMNS[YEARS]]] = std
         
-        mun_mean = round(sum(list(means_list.values())) / len(means_list.keys()), 3)
-        mun_std = round(math.sqrt(sum([std**2 for std in std_list.values()])), 3)
+        mun_mean = round(sum(list(means_list.values())) / len(means_list.keys()), 1)
+        mun_std = round(math.sqrt(sum([std**2 for std in std_list.values()])), 1)
         
         dataset = {'label': "Barranquilla", 'data': [mun_mean, mun_std]}
         response = {
@@ -1637,7 +1657,7 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                         year = int(data[0].split("_")[1])
                         list_loc[loc]['data'][year] = round(data[1], 3)
                                     
-                labels = time_list                
+                labels = time_list
                 datasets = [
                     {
                         'label': list_loc[loc]['name'],
@@ -1669,7 +1689,7 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                             continue
                         
                         year = int(data[0].split("_")[1])
-                        list_neighborhood[neigh]['data'][year] = data[1]
+                        list_neighborhood[neigh]['data'][year] = round(data[1], 3)
                     list_neighborhood[neigh]['sum'] = round(sum(list_neighborhood[neigh]['data'].values()), 3)
                 
                 list_neighborhood = dict(sorted(list_neighborhood.items(), key=lambda item: item[1]['sum'], reverse=True))
