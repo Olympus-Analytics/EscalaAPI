@@ -144,7 +144,7 @@ class NDVISerializer (serializers.ModelSerializer):
     class Meta:
         model = NDVI
         geo_field = "RASTER"
-        fields = ['YEAR', 'RASTER_URL', 'RASTER_AUX']
+        fields = ['YEAR', 'RASTER_URL', 'RASTER_AUX', 'RASTER_LEGEND']
         
     def get_RASTER_URL(self, obj):
         request = self.context.get('request')

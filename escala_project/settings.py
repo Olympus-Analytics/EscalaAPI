@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'visualization.apps.VisualizationConfig',
     'rest_framework',
     'rest_framework_gis',
+    'drf_yasg',
     'django_extensions'
 ]
 CORS_ALLOW_ALL_ORIGINS = True
