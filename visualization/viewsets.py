@@ -89,14 +89,32 @@ class EscalaFilter:
         list_years = {year: 0 for year in time_list}
           
         mun_area = sum([mun["AREA"] for mun in list(Municipality.objects.all().values("ID_MUN", "AREA"))])      
-        data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
+        data = list(class_.objects.filter(ID_NEIGHB__in=space_list, COLYEAR__in=time_list).order_by().values(columns[YEARS], columns[MONTHS]).order_by(columns[YEARS]).annotate(count=Count(columns[YEARS])))
+        
         for value in data:
             if statistics:
                 list_years[value[columns[YEARS]]] = round(value['count']/mun_area, 4)
             else:
                 list_years[value[columns[YEARS]]] = value['count']
+        
+        if statistics:
+            std_list = {year: 0 for year in time_list}
+            month_count = {year: 0 for year in time_list}
+            for value in data:
+                year_mean = list_years[value[columns[YEARS]]]
+                std_list[value[columns[YEARS]]] += (year_mean - value['count']/mun_area) ** 2
+                month_count[value[columns[YEARS]]] += 1
             
-        return [list_years.keys(), list_years.values()]
+            upper_std = []
+            lower_std = []
+            for year in list_years.keys():
+                std_list[year] = np.sqrt(std_list[year]/month_count[year])
+                upper_std.append(round(list_years[year] + std_list[year], 3))
+                lower_std.append(round(list_years[year] - std_list[year], 3))
+                
+            return [list_years.keys(), [list_years.values(), upper_std, lower_std]]
+        else:
+            return [list_years.keys(), list_years.values()]
     
     def filterByMonth (self, class_, space_list, time_list, columns, statistics=False):
         months_per_year = [i for i in range(1, 13)]
@@ -895,7 +913,7 @@ class TrafficCollisionTSMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
             query_filter = params.get('filter')
             if MUNBYYEAR in query_filter:
                 chart = [BAR, LINE]
-                return [['Barranquilla']] + self.filterByYear(class_, space_list, time_list, columns, statistics=True) + [chart]
+                return [['Means', 'Upper Std', 'Lower Std']] + self.filterByYear(class_, space_list, time_list, columns, statistics=True) + [chart]
             elif MUNBYMONTH in query_filter:
                 chart = [BAR, LINE]
                 return [['Barranquilla']] + self.filterByMonth(class_, space_list, time_list, columns, statistics=True) + [chart]
@@ -1395,7 +1413,6 @@ class LandSurfaceTemperatureMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter)
             if (value[COLUMNS[YEARS]] > 1900):
                 raster = GDALRaster(value['RASTER'])
                 raster_data = raster.bands[0].statistics()
-                print(raster_data)
                 mean = raster_data[2]
                 std = raster_data[3]
                 
@@ -1656,12 +1673,14 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                     for data in mean:
                         year = int(data[0].split("_")[1])
                         list_loc[loc]['data'][year] = round(data[1], 3)
-                                    
+                print(len(time_list))
+                print(len(list_loc[list(list_loc.keys())[0]]['data'].values()))
+                print(type(list(list_loc[list(list_loc.keys())[0]]['data'].values())[0]))
                 labels = time_list
                 datasets = [
                     {
                         'label': list_loc[loc]['name'],
-                        'dataset': list(list_loc[loc]['data'].values())   
+                        'data': list(list_loc[loc]['data'].values())   
                     } for loc in list_loc.keys()
                 ]
                 
