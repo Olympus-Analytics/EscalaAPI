@@ -3,7 +3,7 @@ from rest_framework import routers
 from .viewsets import NeightborhoodViewSet, Locality_barViewSet, UPZViewSet, ZATViewSet, UrbanPerimeterViewSet, MunicipalityViewSet, TreePlotViewSet, AirTemperatureViewSet, RainfallViewSet
 from .viewsets import LandSurfaceTemperatureViewSet, LandSurfaceTemperatureMeanViewSet, LandSurfaceTemperatureMunMeanViewSet
 from .viewsets import NDVIViewSet, NDVIMeanViewSet, NDVIMunMeanViewSet
-from .views import NDVIDownloadView, LSTDownloadView
+from .viewsets import NDVIDownloadViewSet, LandSurfaceTemperatureDownloadViewSet
 
 from .viewsets import TrafficCollisionViewSet, TrafficCollisionPointViewSet, TrafficCollisionCountViewSet, TrafficCollisionAreaCountViewSet, TrafficCollisionTSCountViewSet, TrafficCollisionTSMeanViewSet
 from .viewsets import TreePlotViewSet, TreePlotPointViewSet, TreePlotCountViewSet, TreePlotAreaCountViewSet, TreePlotMunMeanViewSet
@@ -42,9 +42,11 @@ router.register("air_temperature", AirTemperatureViewSet, basename='air_temperat
 router.register("rainfall", RainfallViewSet, basename='rainfall_data')
 
 router.register("landsurface_temperature", LandSurfaceTemperatureViewSet, basename='landsurface_temperature_data')
+router.register("landsurface_temperature_download", LandSurfaceTemperatureDownloadViewSet, basename='landsurface_temperature_download')
 router.register("landsurface_temperature_means", LandSurfaceTemperatureMeanViewSet, basename="landsurface_temperature_means")
 router.register("landsurface_temperature_mun_mean", LandSurfaceTemperatureMunMeanViewSet, basename="landsurface_temperature_mun_mean")
 
 router.register("ndvi", NDVIViewSet, basename='ndvi_data')
+router.register("ndvi_download", NDVIDownloadViewSet, basename='ndvi_data_download')
 router.register("ndvi_means", NDVIMeanViewSet, basename="ndvi_means")
-router.register("ndvi_mun_mean", NDVIMunMeanViewSet, basename="ndvi_mun_mean")
+router.register("ndvi_mun_mean", NDVIMunMeanViewSet, basename="ndvi_mun_mean") 

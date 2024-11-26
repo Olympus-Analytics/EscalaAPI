@@ -11,7 +11,7 @@ from django.db import connection
 from .models import TrafficCollision, Neightborhood, Locality_bar, UPZ, ZAT, UrbanPerimeter, Municipality, TreePlot, AirTemperature, Rainfall, LandSurfaceTemperature, NDVI
 from .serializer import TrafficCollisionSerializer, TrafficCollisionPointSerializer
 from .serializer import TreePlotSerializer, TreePlotPointSerializer
-from .serializer import AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer, NDVITestSerializer
+from .serializer import AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer, NDVITestSerializer, LSTDownloadSerializer, NDVIDownloadSerializer
 from .serializer import TrafficCollisionSerializer, NeightborhoodSerializer, Locality_barSerializer, UPZSerializer, ZATSerializer, UrbanPerimeterSerializer, MunicipalitySerializer, TreePlotSerializer, AirTemperatureSerializer, RainfallSerializer, LandSurfaceTemperatureSerializer, NDVISerializer
 
 #Chart Domains
@@ -1393,6 +1393,23 @@ class LandSurfaceTemperatureViewSet (viewsets.ModelViewSet):
         
         serializer = LandSurfaceTemperatureSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data[0])
+    
+class LandSurfaceTemperatureDownloadViewSet (viewsets.ModelViewSet):
+    queryset = LandSurfaceTemperature.objects.all()
+    serializer_class = LSTDownloadSerializer
+    
+    def list (self, request):
+        params = self.request.query_params
+        
+        if 'YY' in params:
+            queryset = LandSurfaceTemperature.objects.filter(YEAR=params.get("YY"))
+        elif 'ID' in params:
+            queryset = LandSurfaceTemperature.objects.filter(ID_LST=params.get("ID"))
+        else:
+            queryset = LandSurfaceTemperature.objects.all()
+        
+        serializer = LSTDownloadSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data[0])
 
 class LandSurfaceTemperatureMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
     serializer_class = LandSurfaceTemperatureSerializer
@@ -1576,6 +1593,23 @@ class NDVIViewSet (viewsets.ModelViewSet):
         
         #print(NDVI.objects.all().values("ID_NDVI", "RASTER"))
         serializer = NDVISerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data[0])
+    
+class NDVIDownloadViewSet (viewsets.ModelViewSet):
+    serializer_class = NDVIDownloadSerializer
+    
+    def list (self, request):
+        params = self.request.query_params
+        
+        if 'YY' in params:
+            queryset = NDVI.objects.filter(YEAR=params.get("YY"))
+        elif 'ID' in params:
+            queryset = NDVI.objects.filter(ID_NDVI=params.get("ID"))
+        else:
+            queryset = NDVI.objects.all()
+        
+        #print(NDVI.objects.all().values("ID_NDVI", "RASTER"))
+        serializer = NDVIDownloadSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data[0])
 
 class NDVIMunMeanViewSet (viewsets.ModelViewSet, EscalaFilter):

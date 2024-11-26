@@ -42,7 +42,8 @@ class LSTDownloadView (View):
         mem_driver = gdal.GetDriverByName('MEM')
         mem_dataset = mem_driver.Create('', raster.width, raster.height, len(raster.bands), gdal.GDT_Float32)
         mem_dataset.SetGeoTransform(raster.geotransform)
-        mem_dataset.SetProjection(raster.ds.GetProjection())
+        mem_dataset.SetProjection(raster.ds.GetProjection()
+                                  )
 
         # Copy raster data to in-memory dataset
         for band_idx in range(raster.count):

@@ -188,10 +188,7 @@ class LSTDownloadSerializer (serializers.ModelSerializer):
     
     def get_RASTER_URL(self, obj):
         request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(reverse("download_lst", args=[obj.ID_LST.replace(".tif", ".png")]))
-        else:
-            return request.build_absolute_uri("")
+        return request.build_absolute_uri(static(f'LST_bar/Download/{obj.ID_LST}.zip'))
     
     
 
@@ -205,11 +202,7 @@ class NDVIDownloadSerializer (serializers.ModelSerializer):
         
     def get_RASTER_URL(self, obj):
         request = self.context.get('request')
-        if request:
-            print(obj.ID_NDVI)
-            return request.build_absolute_uri(reverse("download_ndvi", args=[obj.ID_NDVI.replace(".tif", ".png")]))
-        else:
-            return request.build_absolute_uri("")
+        return request.build_absolute_uri(static(f'NDVI_bar/Download/{obj.ID_NDVI}.zip'))
         
     
         
