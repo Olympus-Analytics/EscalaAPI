@@ -14,4 +14,4 @@ services:
       - .:/app  # Solo durante el desarrollo para trabajar con los archivos locales
     command: >
       bash -c "python manage.py migrate &&
-               python manage.py runserver 0.0.0.0:8000"
+               python manage.py runserver 0.0.0.0:8000 --nostatic"
