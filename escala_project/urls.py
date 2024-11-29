@@ -21,7 +21,7 @@ from django.conf.urls.static import static
 from django.conf import settings 
 
 from visualization import router as visualization_api_router
-from visualization.views import NDVIDownloadView, LSTDownloadView, LSTMetaDownload
+from visualization.views import DownloadFilesView
 
 import sys
 sys.path.insert(0, r"C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala")
@@ -45,9 +45,7 @@ schema_view = get_schema_view(
 
 api_url_patterns = [
     path(r'data/', include(visualization_api_router.router.urls)),
-    path(r"download/raster/ndvi/<str:raster_id>/", NDVIDownloadView.as_view(), name="download_ndvi"),
-    path(r"download/raster/lst/<str:raster_id>/", LSTDownloadView.as_view(), name="download_lst"),
-    path(r"download/raster/lst/meta/<str:raster_year>/", LSTMetaDownload.as_view(), name="download_lst_meta")
+    path(r"download/", DownloadFilesView.as_view(), name="download_files"),
 ]
 
 urlpatterns = [

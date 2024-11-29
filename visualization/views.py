@@ -6,11 +6,12 @@ from django.templatetags.static import static
 from django.shortcuts import render
 from django.http import FileResponse, Http404
 from rest_framework.views import APIView
-import os, io
+import os, io, csv
 import zipfile
 from osgeo import gdal
 
-from .models import NDVI, LandSurfaceTemperature
+
+from .models import NDVI, LandSurfaceTemperature, TrafficCollision, TreePlot
 
 # Create your views here.
 class NDVIDownloadView (View):
@@ -92,4 +93,60 @@ class LSTMetaDownload(APIView):
         response = HttpResponse(zip_buffer, content_type="application/zip")
         response['Content-Disposition'] = f'attachment; filename="LST_{raster_year}.zip"'
         
+        return response
+    
+class DownloadFilesView(APIView):
+    def get(self, request, *args, **kwargs):
+        # Extract filters from query params
+        include_treeplot = request.query_params.get('treeplot', 'false').lower() == 'true'
+        include_traffic = request.query_params.get('traffic_collisions', 'false').lower() == 'true'
+        ndvi_year = request.query_params.get('ndvi_year')
+        lst_year = request.query_params.get('lst_year')
+        files_to_zip = []
+
+       
+        if include_treeplot:
+            treeplot_path = ("TreePlot.zip", static('TreePlot.zip'))
+            files_to_zip.append(treeplot_path)
+            meta = ("TreePlot_metadata.xlsx", static("metadata/TreePlot.xlsx"))
+            files_to_zip.append(meta)
+
+        if include_traffic:
+            traffic_path = ("TrafficCollisions.csv", static('TrafficCollisions.zip'))
+            files_to_zip.append(traffic_path)
+            meta = ("TrafficCollision_metadata.xlsx", static("metadata/TrafficCollision.xlsx"))
+            files_to_zip.append(meta)
+
+        if ndvi_year:
+            ndvi_path = (f"NDVIbar_{ndvi_year}__mean.tif", static(f'NDVI_bar/NDVIbar_{ndvi_year}__mean.tif'))
+            files_to_zip.append(ndvi_path)
+            meta = ("NDVIbar_metadata.xlsx", static("metadata/NDVIbar.xlsx"))
+            files_to_zip.append(meta)
+
+        if lst_year:
+            LST_path = (f"LSTbar_{lst_year}__mean.tif", static(f'LST_bar/LSTbar_{lst_year}__mean.tif'))
+            files_to_zip.append(LST_path)
+            meta = ("LSTbar_metadata.xlsx", static("metadata/LSTbar.xlsx"))
+            files_to_zip.append(meta)
+
+        # Ensure there are files to zip
+        if not files_to_zip:
+            return HttpResponse("No files selected for download.", status=400)
+        else:
+            locality_meta = ("Locality_metadata.xlsx", static("metadata/Locality.xlsx"))
+            neighborhood_meta = ("Neighborhood_metadata.xlsx", static("metadata/Neighborhood.xlsx"))
+            files_to_zip.append(locality_meta)
+            files_to_zip.append(neighborhood_meta)
+
+        response = HttpResponse(content_type='application/zip')
+        response['Content-Disposition'] = 'attachment; filename="datasets.zip"'
+
+        with zipfile.ZipFile(response, 'w') as zip_file:
+            for file_name, file_path in files_to_zip:
+                local_path = os.getcwd() + file_path.replace(request.build_absolute_uri('/'), '')
+                try:
+                    zip_file.write(local_path, arcname=file_name)
+                except:
+                    return HttpResponse(f"File not found: {file_name}", status=404)
+
         return response

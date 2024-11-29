@@ -49,4 +49,4 @@ router.register("landsurface_temperature_mun_mean", LandSurfaceTemperatureMunMea
 router.register("ndvi", NDVIViewSet, basename='ndvi_data')
 router.register("ndvi_download", NDVIDownloadViewSet, basename='ndvi_data_download')
 router.register("ndvi_means", NDVIMeanViewSet, basename="ndvi_means")
-router.register("ndvi_mun_mean", NDVIMunMeanViewSet, basename="ndvi_mun_mean") 
+router.register("ndvi_mun_mean", NDVIMunMeanViewSet, basename="ndvi_mun_mean")
