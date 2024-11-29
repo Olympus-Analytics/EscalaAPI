@@ -913,7 +913,7 @@ class TrafficCollisionTSMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
             query_filter = params.get('filter')
             if MUNBYYEAR in query_filter:
                 chart = [BAR, LINE]
-                return [['Means', 'Upper Std', 'Lower Std']] + self.filterByYear(class_, space_list, time_list, columns, statistics=True) + [chart]
+                return [['Means', 'Means + 1 Std', 'Means - 1 Std']] + self.filterByYear(class_, space_list, time_list, columns, statistics=True) + [chart]
             elif MUNBYMONTH in query_filter:
                 chart = [BAR, LINE]
                 return [['Barranquilla']] + self.filterByMonth(class_, space_list, time_list, columns, statistics=True) + [chart]
@@ -1479,9 +1479,9 @@ class LandSurfaceTemperatureMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                     up_std.append(round(mean+std[i], 3))
                     low_std.append(round(mean-std[i], 3))
                 
-                dataset = [{'label': "LST Means", 'data': means_list.values()},
-                            {'label': "LST upper Std", 'data': up_std},
-                            {'label': "LST lower Std", 'data': low_std}]
+                dataset = [{'label': "Means", 'data': means_list.values()},
+                            {'label': "Mean + 1 std", 'data': up_std},
+                            {'label': "Mean - 1 Std", 'data': low_std}]
                 
                 return dataset, means_list.keys()
             elif LOCALITY in query_filter:
@@ -1511,7 +1511,7 @@ class LandSurfaceTemperatureMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                 datasets = [
                     {
                         'label': list_loc[loc]['name'],
-                        'dataset': list(list_loc[loc]['data'].values())   
+                        'data': list(list_loc[loc]['data'].values())   
                     } for loc in list_loc.keys()
                 ]
                 
@@ -1548,7 +1548,7 @@ class LandSurfaceTemperatureMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                 datasets = [
                     {
                         'label': list_neighborhood[neigh]['name'],
-                        'dataset': list(list_neighborhood[neigh]['data'].values()) 
+                        'data': list(list_neighborhood[neigh]['data'].values()) 
                     } for neigh in list_neighborhood.keys()
                 ]
                 
@@ -1680,9 +1680,9 @@ class NDVIMeanViewSet (viewsets.ModelViewSet, EscalaFilter):
                     up_std.append(round(mean+std[i],3))
                     low_std.append(round(mean-std[i], 3))
                 
-                dataset = [{'label': "NDVI Means", 'data': means_list.values()},
-                        {'label': "NDVI Upper Std", 'data': up_std},
-                        {'label': "NDVI Lower Std", 'data': low_std}]
+                dataset = [{'label': "Means", 'data': means_list.values()},
+                        {'label': "Means + 1 Std", 'data': up_std},
+                        {'label': "Means - 1 Std", 'data': low_std}]
                 
                 return dataset, means_list.keys()
             elif LOCALITY in query_filter:
