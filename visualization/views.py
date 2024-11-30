@@ -112,7 +112,7 @@ class DownloadFilesView(APIView):
             files_to_zip.append(meta)
 
         if include_traffic:
-            traffic_path = ("TrafficCollisions.csv", static('TrafficCollisions.zip'))
+            traffic_path = ("TrafficCollisions.zip", static('TrafficCollisions.zip'))
             files_to_zip.append(traffic_path)
             meta = ("TrafficCollision_metadata.xlsx", static("metadata/TrafficCollision.xlsx"))
             files_to_zip.append(meta)

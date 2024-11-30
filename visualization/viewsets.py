@@ -748,6 +748,8 @@ class TrafficCollisionPointViewSet (viewsets.ModelViewSet):
         
         if 'YY' in params:
             queryset = TrafficCollision.objects.filter(COLYEAR=params.get("YY"))
+        else:
+            queryset = TrafficCollision.objects.all()
         
         serializer = TrafficCollisionPointSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
