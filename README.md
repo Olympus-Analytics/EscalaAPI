@@ -167,3 +167,37 @@ Platform: Aiven
 Username: Olympus Analytics
 Email: administrativo@olympus-analytics.dev
 Password: .YYXNj3M@uvdeD.
+
+## Requisitos previos
+- Tener instalado [Docker desktop](https://www.docker.com/products/docker-desktop/)
+
+## Clona el repositorio: 
+ejecuta el siguiente comando desde la consola
+```
+git clone https://github.com/Olympus-Analytics/EscalaAPI.git
+```
+
+## Acede a la carpeta
+para moverte entre carpetas de consola debes usar el siguiente comando:
+
+```
+cd nombredelacarpeta
+```
+Entonces en este caso, para acceder a la carpeta se debe ejecutar el siguiente comando
+```
+cd EscalaApi
+```
+## Dar permisos al .shell que ejecuta el proyecto
+ejecuta el siguiente comando desde la consola
+```
+chmod +x init.sh
+```
+
+## Ejecutar el proyecto
+ejecuta el siguiente comando desde la consola
+
+```
+./init.sh
+```
+## El proyecto estará disponible en 
+http://localhost:8000.
