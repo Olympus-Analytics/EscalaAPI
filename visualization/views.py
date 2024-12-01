@@ -150,3 +150,30 @@ class DownloadFilesView(APIView):
                     return HttpResponse(f"File not found: {file_name}", status=404)
 
         return response
+    
+class AUXFilesView (APIView):
+    def get(self, request, *args, **kwargs):
+        
+        year = request.query_params.get('year')
+        raster = request.query_params.get('raster') #NDVI | LST
+        
+        if not year or not raster:
+            raise Http404("Ingrese los filtros year y raster")
+        
+        path = static(f'{raster}_bar\PNG\{raster}bar_{year}__mean.png.aux.xml')
+        file_path = os.getcwd() + path.replace(request.build_absolute_uri('/'), '')
+        print(file_path)
+
+        # Verificar si el archivo existe
+        if not os.path.exists(file_path):
+            raise Http404(f"Archivo del Raster de {raster} para el año {year} no fue encontrado.")
+
+        # Leer el archivo en modo binario
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+
+        # Crear una respuesta HTTP con el contenido binario
+        response = HttpResponse(file_data, content_type='application/octet-stream')
+        response['Content-Disposition'] = f'attachment; filename="{raster}bar_{year}__mean.png.aux.xml"'
+
+        return response

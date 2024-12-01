@@ -21,7 +21,7 @@ from django.conf.urls.static import static
 from django.conf import settings 
 
 from visualization import router as visualization_api_router
-from visualization.views import DownloadFilesView
+from visualization.views import DownloadFilesView, AUXFilesView
 
 import sys
 sys.path.insert(0, r"C:\Users\Sebastian\Desktop\Cuarto de Diseño\Trabajos en desarrollo\Olympus Analytics - Proyecto Empresa\Proyectos\Producto - ESCALA (Uninorte)\Programa\Escala-main\Escala")
@@ -46,6 +46,7 @@ schema_view = get_schema_view(
 api_url_patterns = [
     path(r'data/', include(visualization_api_router.router.urls)),
     path(r"download/", DownloadFilesView.as_view(), name="download_files"),
+    path(r"raster/", AUXFilesView.as_view(), name="raster_aux_files"),
 ]
 
 urlpatterns = [
